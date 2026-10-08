@@ -518,7 +518,7 @@ namespace HorrorTycoon.Run
                     if (total > 0)
                     {
                         TotalScore += total;
-                        Report.Add(ReportKind.Score, $"Tensão: perto do vilão em {Name(s)}", total);
+                        Report.Add(ReportKind.Score, $"Cena perto do vilão em {Name(s)}", total);
                     }
                 }
             }
