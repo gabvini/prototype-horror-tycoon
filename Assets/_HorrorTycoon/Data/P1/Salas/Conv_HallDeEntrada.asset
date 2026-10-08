@@ -18,12 +18,16 @@ MonoBehaviour:
   floorColor: {r: 0.4, g: 0.36, b: 0.33, a: 1}
   tags: []
   kind: 1
-  size: {x: 5, y: 4}
+  size: {x: 8, y: 6}
   allowRotation: 1
   weight: 1
   maxPerRun: 1
   required: 1
   interiorPrefab: {fileID: 0}
+  draftZones: 0
+  doorSides: 0
+  draftOnly: 0
+  excludeFromDraft: 0
   furniture: 8
   lightColor: {r: 1, g: 0.8, b: 0.55, a: 1}
   flickeringLight: 0
@@ -35,3 +39,7 @@ MonoBehaviour:
     requiredTool: {fileID: 0}
     reward: {fileID: 0}
     text: 
+  pavorPerScene: 0
+  plots: []
+  startsSealed: 0
+  sealedText: 

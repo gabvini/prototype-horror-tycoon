@@ -16,10 +16,10 @@ namespace HorrorTycoon.Rooms.Building
     {
         [Header("Medidas (metros)")]
         [Tooltip("Pé-direito (altura das paredes).")]
-        [Min(1f)] public float wallHeight = 2.7f;
+        [Min(1f)] public float wallHeight = 3f;
         [Min(0.02f)] public float wallThickness = 0.12f;
         [Tooltip("Altura do vão das portas (acima vai a verga).")]
-        [Min(0.5f)] public float doorHeight = 2.1f;
+        [Min(0.5f)] public float doorHeight = 2.3f;
         [Tooltip("Paredes compridas são divididas em pedaços de até este tamanho (o corte 'Sims' é por pedaço).")]
         [Min(0.5f)] public float maxWallPiece = 4f;
 

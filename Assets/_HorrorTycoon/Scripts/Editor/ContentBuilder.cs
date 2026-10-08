@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using HorrorTycoon.Actors;
 using HorrorTycoon.Core;
 using HorrorTycoon.Rooms;
+using HorrorTycoon.Rooms.Building;
 using HorrorTycoon.Rooms.Generation;
 using HorrorTycoon.Run;
 using HorrorTycoon.Scoring;
@@ -446,10 +447,11 @@ namespace HorrorTycoon.EditorTools
             EnsureFolder(DataRoot, "Geracao");
 
             // Tamanhos (metros) na ordem de 'salas': Cozinha, Sala de estar, Banheiro, Quarto, Porão, Sótão.
+            // Escala de cinema ×1,5 (08/10/2026): espaço para a câmera dentro dos cômodos.
             var sizes = new[]
             {
-                new Vector2Int(4, 5), new Vector2Int(5, 4), new Vector2Int(3, 3),
-                new Vector2Int(4, 4), new Vector2Int(4, 5), new Vector2Int(4, 4),
+                new Vector2Int(6, 8), new Vector2Int(8, 6), new Vector2Int(5, 5),
+                new Vector2Int(6, 6), new Vector2Int(6, 8), new Vector2Int(6, 6),
             };
             for (int i = 0; i < salas.Count && i < sizes.Length; i++)
             {
@@ -474,17 +476,61 @@ namespace HorrorTycoon.EditorTools
             // Convivências: atores param aqui, sem encontro. O Hall é o espaço INICIAL (obrigatório).
             // ("Sala de estar" já existe como SALA com encontros no P0, então a convivência inicial é o Hall.)
             RoomDef hall = Social("HallDeEntrada", "Hall de entrada", "A porta da frente dá aqui. O elenco se reúne antes de cada cena.",
-                new Color(0.4f, 0.36f, 0.33f), new Vector2Int(5, 4), true, FurnitureStyle.Hall, warm);
+                new Color(0.4f, 0.36f, 0.33f), new Vector2Int(8, 6), true, FurnitureStyle.Hall, warm);
             RoomDef jantar = Social("SalaDeJantar", "Sala de jantar", "Uma mesa posta para ninguém.",
-                new Color(0.42f, 0.33f, 0.28f), new Vector2Int(4, 4), false, FurnitureStyle.Dining, warm);
+                new Color(0.42f, 0.33f, 0.28f), new Vector2Int(6, 6), false, FurnitureStyle.Dining, warm);
             RoomDef tv = Social("SalaDeTV", "Sala de TV", "O sofá afundado e a TV chiando.",
-                new Color(0.34f, 0.36f, 0.42f), new Vector2Int(5, 4), false, FurnitureStyle.Living, new Color(0.7f, 0.8f, 1f));
+                new Color(0.34f, 0.36f, 0.42f), new Vector2Int(8, 6), false, FurnitureStyle.Living, new Color(0.7f, 0.8f, 1f));
 
-            Make<HouseGenDef>("Geracao/Casa_Padrao", g =>
+            var gen = Make<HouseGenDef>("Geracao/Casa_Padrao", g =>
             {
                 g.corridorDef = corredor;
                 g.socialPool = new List<RoomDef> { hall, jantar, tv };
             });
+
+            UpgradeCinemaScale(gen, salas, sizes, new[] { hall, jantar, tv },
+                new[] { new Vector2Int(8, 6), new Vector2Int(6, 6), new Vector2Int(8, 6) });
+        }
+
+        /// <summary>
+        /// Escala de cinema ×1,5 (08/10/2026) para conteúdo criado antes. Aplicada UMA vez: o marcador é o
+        /// corredor do Casa_Padrao ainda com menos de 3 m. Sobrescreve tamanhos das salas/convivências e as
+        /// medidas da casa (planta + kit de arte). A casa fixa do P0 não usa nada disso.
+        /// </summary>
+        private static void UpgradeCinemaScale(HouseGenDef gen, List<RoomDef> salas, Vector2Int[] roomSizes,
+            RoomDef[] socials, Vector2Int[] socialSizes)
+        {
+            if (gen == null || gen.corridorWidth >= 3) return;
+
+            void SetSize(RoomDef r, Vector2Int s)
+            {
+                if (r == null) return;
+                var so = new SerializedObject(r);
+                so.FindProperty("size").vector2IntValue = s;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(r);
+            }
+            for (int i = 0; i < salas.Count && i < roomSizes.Length; i++) SetSize(salas[i], roomSizes[i]);
+            for (int i = 0; i < socials.Length; i++) SetSize(socials[i], socialSizes[i]);
+
+            var defaults = ScriptableObject.CreateInstance<HouseGenDef>();
+            gen.bounds = defaults.bounds;
+            gen.corridorWidth = defaults.corridorWidth;
+            gen.segmentLength = defaults.segmentLength;
+            gen.doorWidth = defaults.doorWidth;
+            gen.doorCornerMargin = defaults.doorCornerMargin;
+            gen.minSharedWall = defaults.minSharedWall;
+            Object.DestroyImmediate(defaults);
+            EditorUtility.SetDirty(gen);
+
+            var kit = AssetDatabase.LoadAssetAtPath<HouseArtKit>(HouseArtKitSetup.KitPath);
+            if (kit != null)
+            {
+                kit.wallHeight = 3f;
+                kit.doorHeight = 2.3f;
+                EditorUtility.SetDirty(kit);
+            }
+            Debug.Log("[HorrorTycoon] Escala de cinema ×1,5 aplicada (salas, convivências, Casa_Padrao, kit). Reconstrua a cena P2.");
         }
 
         private static RoomDef Social(string id, string name, string desc, Color color, Vector2Int size, bool required,

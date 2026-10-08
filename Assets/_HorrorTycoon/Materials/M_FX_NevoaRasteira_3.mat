@@ -42,7 +42,7 @@ Material:
     - _SrcBlend: 5
     m_Colors:
     - _BaseColor: {r: 0.2901961, g: 0.3529412, b: 0.4509804, a: 0.13}
-    - _HoleRect: {r: -11.15, g: -10.15, b: 11.15, a: 10.15}
+    - _HoleRect: {r: -16.65, g: -15.15, b: 16.65, a: 15.15}
     - _NoiseSpeed: {r: 0.049999997, g: 0.01, b: 0.02, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

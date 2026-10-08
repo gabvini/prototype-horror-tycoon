@@ -13,17 +13,17 @@ namespace HorrorTycoon.Rooms.Generation
     {
         [Header("Terreno")]
         [Tooltip("Retângulo máximo da casa em metros (largura x profundidade). A porta da frente fica na borda sul (y = 0).")]
-        public Vector2Int bounds = new Vector2Int(22, 20);
+        public Vector2Int bounds = new Vector2Int(33, 30);
 
         [Header("Corredores")]
         [Tooltip("RoomDef usado em TODO segmento de corredor (tipo Corredor).")]
         public RoomDef corridorDef;
         [Tooltip("Largura do corredor em metros.")]
-        [Min(1)] public int corridorWidth = 2;
+        [Min(1)] public int corridorWidth = 3;
         [Tooltip("Quantos segmentos de corredor (mín, máx).")]
         public Vector2Int corridorSegments = new Vector2Int(2, 4);
         [Tooltip("Comprimento de cada segmento em metros (mín, máx).")]
-        public Vector2Int segmentLength = new Vector2Int(4, 9);
+        public Vector2Int segmentLength = new Vector2Int(6, 14);
         [Tooltip("Chance de o próximo segmento virar 90° (senão segue reto).")]
         [Range(0f, 1f)] public float turnChance = 0.5f;
         [Tooltip("Chance de o próximo segmento sair do meio de um segmento antigo (ramificação).")]
@@ -49,11 +49,11 @@ namespace HorrorTycoon.Rooms.Generation
         [Tooltip("Custo de atravessar uma passagem aberta (corredor↔corredor, corredor↔convivência). 0 = mantém a economia atual.")]
         [Min(0)] public int openingCost = 0;
         [Tooltip("Largura do vão da porta em metros.")]
-        [Min(0.5f)] public float doorWidth = 1f;
+        [Min(0.5f)] public float doorWidth = 1.2f;
         [Tooltip("Distância mínima entre a porta e o canto da parede em comum (metros).")]
-        [Min(0f)] public float doorCornerMargin = 0.3f;
+        [Min(0f)] public float doorCornerMargin = 0.45f;
         [Tooltip("Parede em comum mínima (metros inteiros) para ligar dois espaços. Precisa caber porta + 2 margens.")]
-        [Min(1)] public int minSharedWall = 2;
+        [Min(1)] public int minSharedWall = 3;
 
         [Header("Geração")]
         [Tooltip("Tentativas antes de aceitar a melhor casa encontrada (cada tentativa usa uma sub-seed).")]

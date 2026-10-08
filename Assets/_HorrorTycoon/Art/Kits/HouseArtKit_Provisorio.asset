@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 79038ab644ccc074d81b237349cc8f01, type: 3}
   m_Name: HouseArtKit_Provisorio
   m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Rooms.Building.HouseArtKit
-  wallHeight: 2.7
+  wallHeight: 3
   wallThickness: 0.12
-  doorHeight: 2.1
+  doorHeight: 2.3
   maxWallPiece: 4
   wallMaterial: {fileID: 2100000, guid: b401585cdddb747408894464d1b0a023, type: 2}
   exteriorWallMaterial: {fileID: 0}
