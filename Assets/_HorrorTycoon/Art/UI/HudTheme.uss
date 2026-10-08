@@ -1,0 +1,158 @@
+/* =====================================================================
+   Horror Tycoon — HUD (UI Toolkit) · TEMA
+   Tokens de cor, fontes e tamanhos (HUD_Spec_v1 §4). Para mudar a cara da HUD,
+   comece por aqui: cada cor tem UM significado.
+   Medidas em px lógicos na base 1920×1080 (o HudScaler multiplica).
+   ===================================================================== */
+
+.ht-root {
+    /* ---- superfícies */
+    --c-papel: #F2EAD8;
+    --c-tinta: #15121A;
+    --c-tinta-2: #241F2C;
+    --c-tinta-3: #332C3D;
+    --c-painel: #15121A; /* opaco: o projeto é Linear e a mistura de transparência acontece em luz linear (qualquer alfa < 1 "vaza") */
+    --c-borda: #08070A;
+    --c-sombra: rgba(8, 7, 10, 0.6);
+    --c-linha: rgba(242, 234, 216, 0.16);
+    --c-texto-2: #B8AFC4;
+    --c-texto-3: #8D8499;
+    --c-papel-texto-2: #5C5266;
+
+    /* ---- significados (uma cor = um significado) */
+    --c-audiencia: #FFD23F;
+    --c-ok: #6ED37A;
+    --c-alerta: #FF8A3D;
+    --c-perigo: #E0323C;
+    --c-pavor: #7C5CFF;
+    --c-fantasma: #5CF2C2;
+    --c-plot: #8CA6FF;
+    --c-dupla: #FF9AD5;
+    --c-rec: #FF3B3B;
+
+    /* ---- fontes (Font Assets gerados de Fonts/*.ttf pelo HudAssetsSetup) */
+    -unity-font-definition: url("Fonts/AtkinsonHyperlegibleNext-Regular_SDF.asset");
+    font-size: 20px;
+    color: var(--c-papel);
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* ---- tipografia */
+.t-display { -unity-font-definition: url("Fonts/LilitaOne-Regular_SDF.asset"); -unity-font-style: normal; }
+.t-bold { -unity-font-definition: url("Fonts/AtkinsonHyperlegibleNext-Bold_SDF.asset"); }
+.t-xbold { -unity-font-definition: url("Fonts/AtkinsonHyperlegibleNext-ExtraBold_SDF.asset"); }
+.t-marker { -unity-font-definition: url("Fonts/PermanentMarker-Regular_SDF.asset"); }
+
+.t-h1 { -unity-font-definition: url("Fonts/LilitaOne-Regular_SDF.asset"); font-size: 56px; }
+.t-h2 { -unity-font-definition: url("Fonts/LilitaOne-Regular_SDF.asset"); font-size: 32px; }
+.t-num { -unity-font-definition: url("Fonts/LilitaOne-Regular_SDF.asset"); font-size: 40px; }
+.t-btn { -unity-font-definition: url("Fonts/LilitaOne-Regular_SDF.asset"); font-size: 22px; }
+.t-body { font-size: 20px; }
+.t-small { font-size: 16px; }
+.t-label {
+    -unity-font-definition: url("Fonts/AtkinsonHyperlegibleNext-Bold_SDF.asset");
+    font-size: 16px;
+    letter-spacing: 1px;
+    color: var(--c-texto-2);
+}
+.t-dim { color: var(--c-texto-2); }
+.t-italic { -unity-font-style: italic; }
+
+/* cores de texto por significado */
+.fg-audiencia { color: var(--c-audiencia); }
+.fg-ok { color: var(--c-ok); }
+.fg-alerta { color: var(--c-alerta); }
+.fg-perigo { color: var(--c-perigo); }
+.fg-pavor { color: var(--c-pavor); }
+.fg-fantasma { color: var(--c-fantasma); }
+.fg-plot { color: var(--c-plot); }
+.fg-dupla { color: var(--c-dupla); }
+.fg-papel { color: var(--c-papel); }
+.fg-tinta { color: var(--c-tinta); }
+
+/* ---- superfícies */
+.panel {
+    background-color: var(--c-painel);
+    border-radius: 12px;
+    border-width: 2px;
+    border-bottom-width: 6px;
+    border-color: var(--c-borda);
+    padding: 16px;
+}
+.paper {
+    background-color: var(--c-papel);
+    color: var(--c-tinta);
+    border-radius: 12px;
+    border-width: 2px;
+    border-bottom-width: 6px;
+    border-color: var(--c-borda);
+}
+
+/* ---- ícones (SVG em Icons/, importados como Vector Image; a cor vem da tinta) */
+.ic {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: var(--c-papel);
+}
+.ic-16 { width: 16px; height: 16px; }
+.ic-20 { width: 20px; height: 20px; }
+.ic-24 { width: 24px; height: 24px; }
+.ic-40 { width: 40px; height: 40px; }
+.ic-48 { width: 48px; height: 48px; }
+.ic-96 { width: 96px; height: 96px; }
+
+.tint-tinta { -unity-background-image-tint-color: var(--c-tinta); }
+.tint-papel { -unity-background-image-tint-color: var(--c-papel); }
+.tint-dim { -unity-background-image-tint-color: var(--c-texto-2); }
+.tint-audiencia { -unity-background-image-tint-color: var(--c-audiencia); }
+.tint-ok { -unity-background-image-tint-color: var(--c-ok); }
+.tint-alerta { -unity-background-image-tint-color: var(--c-alerta); }
+.tint-perigo { -unity-background-image-tint-color: var(--c-perigo); }
+.tint-pavor { -unity-background-image-tint-color: var(--c-pavor); }
+.tint-fantasma { -unity-background-image-tint-color: var(--c-fantasma); }
+.tint-plot { -unity-background-image-tint-color: var(--c-plot); }
+.tint-dupla { -unity-background-image-tint-color: var(--c-dupla); }
+.tint-rec { -unity-background-image-tint-color: var(--c-rec); }
+
+.ic-clapper { background-image: url("Icons/ic_clapper.svg"); }
+.ic-ticket { background-image: url("Icons/ic_ticket.svg"); }
+.ic-rec { background-image: url("Icons/ic_rec.svg"); }
+.ic-monitor { background-image: url("Icons/ic_monitor.svg"); }
+.ic-knife { background-image: url("Icons/ic_knife.svg"); }
+.ic-ghost { background-image: url("Icons/ic_ghost.svg"); }
+.ic-footprints { background-image: url("Icons/ic_footprints.svg"); }
+.ic-target { background-image: url("Icons/ic_target.svg"); }
+.ic-zzz { background-image: url("Icons/ic_zzz.svg"); }
+.ic-door { background-image: url("Icons/ic_door.svg"); }
+.ic-lock { background-image: url("Icons/ic_lock.svg"); }
+.ic-unlock { background-image: url("Icons/ic_unlock.svg"); }
+.ic-eye { background-image: url("Icons/ic_eye.svg"); }
+.ic-spotlight { background-image: url("Icons/ic_spotlight.svg"); }
+.ic-drop { background-image: url("Icons/ic_drop.svg"); }
+.ic-diamond { background-image: url("Icons/ic_diamond.svg"); }
+.ic-heart { background-image: url("Icons/ic_heart.svg"); }
+.ic-group { background-image: url("Icons/ic_group.svg"); }
+.ic-artefact { background-image: url("Icons/ic_artefact.svg"); }
+.ic-scare { background-image: url("Icons/ic_scare.svg"); }
+.ic-skull { background-image: url("Icons/ic_skull.svg"); }
+.ic-key { background-image: url("Icons/ic_key.svg"); }
+.ic-doorhold { background-image: url("Icons/ic_doorhold.svg"); }
+.ic-panic { background-image: url("Icons/ic_panic.svg"); }
+.ic-star { background-image: url("Icons/ic_star.svg"); }
+.ic-backpack { background-image: url("Icons/ic_backpack.svg"); }
+.ic-dot { background-image: url("Icons/ic_dot.svg"); }
+.ic-close { background-image: url("Icons/ic_close.svg"); }
+.ic-menu { background-image: url("Icons/ic_menu.svg"); }
+.ic-help { background-image: url("Icons/ic_help.svg"); }
+.ic-play { background-image: url("Icons/ic_play.svg"); }
+.ic-fast { background-image: url("Icons/ic_fast.svg"); }
+.ic-warning { background-image: url("Icons/ic_warning.svg"); }
+.ic-check { background-image: url("Icons/ic_check.svg"); }
+.ic-list { background-image: url("Icons/ic_list.svg"); }
+.ic-arrow { background-image: url("Icons/ic_arrow.svg"); }

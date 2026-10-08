@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df091ef539537a34ea27fd9f4307a8d4, type: 3}
+  m_Name: Conteudo_P1
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Core.GameContentDef
+  filmFormat: {fileID: 11400000, guid: 5ed7bd9f704391a408d8620fe7df3314, type: 2}
+  rules: {fileID: 11400000, guid: 91b66d114ffdec74d996303c026cd920, type: 2}
+  actors:
+  - {fileID: 11400000, guid: 538ec10dcd6811f40a6e096e180159b1, type: 2}
+  - {fileID: 11400000, guid: ee3d125e15a52e642bc1e827cb799d37, type: 2}
+  - {fileID: 11400000, guid: 57262049c3a5bec4297929f0141dcc31, type: 2}
+  - {fileID: 11400000, guid: 09c9d054c6399104d87a089827a02b0f, type: 2}
+  hubRoom: {fileID: 11400000, guid: e607adb0104876e4cae27ef10dff9c44, type: 2}
+  rooms:
+  - {fileID: 11400000, guid: 6057a652979f5f841958d7f7e091c95c, type: 2}
+  - {fileID: 11400000, guid: 7fab49c0d63159340b8f39f11e937d67, type: 2}
+  - {fileID: 11400000, guid: 5f9766564e6f11947acbe441d047e71b, type: 2}
+  - {fileID: 11400000, guid: bd109adb4a4d3f6449bcb90e0e28cfc1, type: 2}
+  - {fileID: 11400000, guid: f88b4cb6d27c14547abcf152fe4b7bb5, type: 2}
+  - {fileID: 11400000, guid: cecf8c38f302f264583e08466fb4c789, type: 2}
+  shuffleRooms: 1
+  villains:
+  - {fileID: 11400000, guid: 7f98850f4ce3b014481f6fdeee7d0f0c, type: 2}
+  - {fileID: 11400000, guid: 0b7de7f1fbda5794191117a7fdd8b871, type: 2}
+  autoElements:
+  - {fileID: 11400000, guid: e2fc71ccd7326ae499924000ceafbc58, type: 2}
+  - {fileID: 11400000, guid: 630bac22ce702d043ade4d1e7e61cab6, type: 2}
+  duoCombos:
+  - {fileID: 11400000, guid: 06a9823e17f9d8249ad1da79f4f09765, type: 2}
+  - {fileID: 11400000, guid: f838ca4aaf519c141b607586f8d4a192, type: 2}
+  - {fileID: 11400000, guid: 39d5ea481a4b7ea4ea08e16308793104, type: 2}
+  artefatos:
+  - {fileID: 11400000, guid: a7e4f761cb39a0c41bf7970bb67d04ea, type: 2}
+  - {fileID: 11400000, guid: aedbdb4452b22fe498a680eeca275e34, type: 2}
+  - {fileID: 11400000, guid: a2b61e448e124ca4eb28d29f9f3fbd96, type: 2}
+  - {fileID: 11400000, guid: 86973e36d96c4b242adeda4ea0fd7229, type: 2}
+  - {fileID: 11400000, guid: 07a5fe6168e31a044b19ee7d9ac642f8, type: 2}
+  - {fileID: 11400000, guid: f8e5983d1e84faf4aa7c6411791fb330, type: 2}
+  - {fileID: 11400000, guid: 60e0cfe2ffb078f4ca3a3adfaf041277, type: 2}
+  - {fileID: 11400000, guid: 62c0f23d1c72e9044961df10e22017dd, type: 2}

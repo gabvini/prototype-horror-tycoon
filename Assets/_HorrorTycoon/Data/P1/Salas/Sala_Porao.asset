@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb4311d29770a624a9e442068064a60f, type: 3}
+  m_Name: Sala_Porao
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Rooms.RoomDef
+  displayName: "Por\xE3o"
+  description: "\xDAmido, escuro, e algu\xE9m esteve aqui."
+  floorColor: {r: 0.25, g: 0.24, b: 0.28, a: 1}
+  tags: []
+  kind: 0
+  size: {x: 4, y: 5}
+  allowRotation: 1
+  weight: 1
+  maxPerRun: 1
+  required: 0
+  interiorPrefab: {fileID: 0}
+  draftZones: 0
+  doorSides: 0
+  draftOnly: 0
+  excludeFromDraft: 0
+  furniture: 6
+  lightColor: {r: 0.65, g: 0.75, b: 1, a: 1}
+  flickeringLight: 1
+  hints:
+  - "Perigoso: d\xE1 medo s\xF3 de descer"
+  - Escuro, com coisas velhas espalhadas
+  encounters:
+  - encounter: {fileID: 11400000, guid: 50359ce1b7334a641968a84b45388703, type: 2}
+    weight: 2
+  - encounter: {fileID: 11400000, guid: 61c6fd4f8f85d9841b485c157483b969, type: 2}
+    weight: 3
+  - encounter: {fileID: 11400000, guid: 0eff609bce1ea34489a56a46242534b0, type: 2}
+    weight: 2
+  - encounter: {fileID: 11400000, guid: 8295a06d985a1b34bb39253be23bb75d, type: 2}
+    weight: 1
+  stagePayoffs:
+  - {fileID: 11400000, guid: 7cf1fd094bf96cd4490bc781477627d8, type: 2}
+  lockedSpot:
+    name: "Al\xE7ap\xE3o"
+    requiredTool: {fileID: 11400000, guid: 6264af5116bd5094382fb5ee2b629b34, type: 2}
+    reward: {fileID: 11400000, guid: d9eb91f990dc9ec43a5cd2e817147c81, type: 2}
+    text: "Os parafusos cedem. Dentro do al\xE7ap\xE3o\u2026 um machado."
+  pavorPerScene: 6
+  plots: []
+  startsSealed: 1
+  sealedText: "A porta do por\xE3o est\xE1 trancada por dentro. Algu\xE9m deve ter
+    anotado como abrir\u2026 talvez no S\xF3t\xE3o."

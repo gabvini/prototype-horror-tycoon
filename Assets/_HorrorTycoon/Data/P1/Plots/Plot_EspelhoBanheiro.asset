@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6d048f572bde814ea29cf5752cfd3a8, type: 3}
+  m_Name: Plot_EspelhoBanheiro
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Run.PlotDef
+  displayName: A lenda do espelho
+  description: A Popular fica 1 cena SOZINHA no Banheiro.
+  color: {r: 1, g: 0.85, b: 0.4, a: 1}
+  requiredRoles: 04000000
+  minActors: 0
+  maxActors: 1
+  rooms: []
+  scenes: 1
+  investigation: 0
+  failOnBreak: 0
+  rewardPoints: 100
+  rewardPavor: 0
+  unlockRoom: {fileID: 0}
+  rewardTool: {fileID: 0}
+  rewardArtefato: {fileID: 0}
+  rewardRandomArtefato: 0
+  rewardElement: {fileID: 11400000, guid: 858e46b984a1b67449f5f59853f64681, type: 2}
+  rewardText: "Ela diz o nome tr\xEAs vezes no espelho\u2026 e algo responde (Presen\xE7a
+    na sala)."

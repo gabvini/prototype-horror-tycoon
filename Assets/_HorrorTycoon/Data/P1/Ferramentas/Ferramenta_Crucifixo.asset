@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11856bbb7ef3ea840a744db65dc8113b, type: 3}
+  m_Name: Ferramenta_Crucifixo
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Run.ToolDef
+  displayName: Crucifixo
+  description: "Afasta presen\xE7as sobrenaturais. Gasta ao usar."
+  counters: {fileID: 11400000, guid: 92ffb90f56e2f3743b27af9d565b2c52, type: 2}

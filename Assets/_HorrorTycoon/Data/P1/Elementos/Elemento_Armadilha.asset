@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29a1c2aad2f35be45b93ef31ee5c64e5, type: 3}
+  m_Name: Elemento_Armadilha
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Scoring.ElementDef
+  displayName: Armadilha
+  description: Uma armadilha de urso escondida.
+  color: {r: 0.95, g: 0.55, b: 0.3, a: 1}
+  subgenre: {fileID: 11400000, guid: e95fbe8788b1741479746beeb4c2ccd9, type: 2}
+  holder: 1
+  strength: 1
+  validFor:
+  - {fileID: 11400000, guid: 7cf1fd094bf96cd4490bc781477627d8, type: 2}
+  autoRule: 0
+  autoValue: 0

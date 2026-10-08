@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d269490b11de1bc4285370c6e56999d2, type: 3}
+  m_Name: Ator_Atleta
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Actors.ActorDef
+  displayName: Atleta
+  description: "O Atleta. Protege quem est\xE1 junto."
+  color: {r: 0.8, g: 0.25, b: 0.25, a: 1}
+  tags: []
+  doorsPerStep: 2
+  startingPavor: 0
+  role: 1
+  roleTitle: Tanque
+  passiveText: "Quem est\xE1 com ele ganha metade do pavor. 1\xD7 por ato: segura
+    a porta (o vil\xE3o n\xE3o entra na pr\xF3xima cena)."
+  plots: []

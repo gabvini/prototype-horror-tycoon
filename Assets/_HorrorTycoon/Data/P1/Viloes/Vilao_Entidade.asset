@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 609bd73cfeb411c4fab904937ba71721, type: 3}
+  m_Name: Vilao_Entidade
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Run.VillainDef
+  displayName: A Entidade
+  description: "Fantasma. Assombra uma sala e enche a TENS\xC3O a cada cena; no m\xE1ximo,
+    GRANDE SUSTO em quem estiver l\xE1. Presen\xE7as e objetos amaldi\xE7oados valem
+    em dobro."
+  color: {r: 0.55, g: 0.45, b: 0.95, a: 1}
+  subgenre: {fileID: 11400000, guid: 92ffb90f56e2f3743b27af9d565b2c52, type: 2}
+  look: 2
+  family: 2

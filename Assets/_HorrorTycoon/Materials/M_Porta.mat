@@ -1,0 +1,74 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Porta
+  m_Shader: {fileID: 4800000, guid: f6eb7d49808c9714fb88829a6465af84, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords:
+  - _SEETHROUGH
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 1
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses:
+  - SRPDEFAULTUNLIT
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _AmbientStrength: 1.5
+    - _BandHeight: 0
+    - _Cull: 2
+    - _EdgeSoftness: 0.04
+    - _GradientOffset: 0.5
+    - _GradientScale: 1
+    - _GradientStrength: 0.15
+    - _MidThreshold: 0.55
+    - _OutlineFromBase: 1
+    - _OutlineWidth: 2.5
+    - _PointBackFace: 0.15
+    - _PointGain: 0.8
+    - _PointHigh: 0.5
+    - _PointLow: 0.16
+    - _PointLowLevel: 0.45
+    - _RimPower: 3.5
+    - _RimStrength: 0.4
+    - _RimThreshold: 0.22
+    - _SeeThrough: 1
+    - _SeeThroughKeepTop: 1
+    - _ShadowStrength: 1
+    - _ShadowThreshold: 0.3
+    - _SpecThreshold: 0.92
+    - _StripeWidth: 0
+    - _StripeY: 0.9
+    - _TopBlend: 0
+    - _UseRim: 0
+    - _UseSpecular: 0
+    m_Colors:
+    - _BandColor: {r: 0.28999996, g: 0.19999996, b: 0.15699998, a: 1}
+    - _BaseColor: {r: 0.47843137, g: 0.23137255, b: 0.2784314, a: 1}
+    - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
+    - _OutlineColor: {r: 0.042999983, g: 0.039, b: 0.06999998, a: 1}
+    - _RimColor: {r: 0.54899997, g: 0.651, b: 1, a: 1}
+    - _ShadeTint: {r: 0.722, g: 0.682, b: 0.859, a: 1}
+    - _ShadowTint: {r: 0.35699996, g: 0.30599996, b: 0.54899997, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+    - _StripeColor: {r: 0.47799987, g: 0.41599998, b: 0.5019999, a: 1}
+    - _TopColor: {r: 0.15999997, g: 0.12999997, b: 0.19999996, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

@@ -1,0 +1,477 @@
+/* =====================================================================
+   Horror Tycoon — HUD (UI Toolkit) · COMPONENTES
+   Zonas Z1–Z10 da HUD_Spec_v1 §3. Medidas em px lógicos (base 1920×1080).
+   Cores/fontes vêm do HudTheme.uss (var(--c-...)). Grade de 8 px.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------- base */
+.layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.row { flex-direction: row; align-items: center; }
+.col { flex-direction: column; }
+.grow { flex-grow: 1; }
+Label { margin: 0; padding: 0; white-space: normal; }
+
+.fadeable { transition-property: opacity; transition-duration: 0.2s; transition-timing-function: ease-out; }
+.is-off { opacity: 0; transition-duration: 0.4s; }
+.is-disabled { opacity: 0.4; }
+
+/* tintas extras para fundo Papel (contraste ≥ 3:1) */
+.tint-plot-papel { -unity-background-image-tint-color: #3F5BD0; }
+.tint-dupla-papel { -unity-background-image-tint-color: #C2357F; }
+.tint-ok-papel { -unity-background-image-tint-color: #2E8A3C; }
+.tint-perigo-papel { -unity-background-image-tint-color: #B3242C; }
+
+/* chips e selos */
+.chip {
+    flex-shrink: 0;
+    padding: 2px 8px 2px 6px;
+    border-radius: 8px;
+    margin: 0 6px 6px 0;
+    background-color: var(--c-tinta-3);
+    color: var(--c-papel);
+}
+.chip > .ic { margin-right: 4px; }
+.chip .t-label { color: var(--c-papel); white-space: nowrap; }
+.chip-dim .t-label { color: var(--c-texto-2); }
+.chip-ok { background-color: var(--c-ok); }
+.chip-ok .t-label { color: var(--c-tinta); }
+.chip-danger { background-color: var(--c-perigo); }
+.chip-danger .ic { -unity-background-image-tint-color: var(--c-papel); }
+.chip-ghost { background-color: #1E4A40; border-width: 1px; border-color: var(--c-fantasma); }
+.chip-ghost .t-label { color: var(--c-fantasma); }
+.chip-plot { border-width: 1px; border-color: var(--c-plot); }
+.chip-plot .t-label { color: var(--c-plot); }
+.chip.is-locked { opacity: 0.55; }
+
+.badge { padding: 1px 8px; border-radius: 6px; flex-shrink: 0; }
+.badge .t-label { color: var(--c-tinta); font-size: 16px; letter-spacing: 1px; white-space: nowrap; }
+.badge-free { background-color: var(--c-ok); }
+.badge-cost { background-color: var(--c-papel); }
+.badge-here { background-color: var(--c-tinta-3); }
+.badge-here .t-label { color: var(--c-texto-2); }
+.badge-no { background-color: var(--c-tinta-3); }
+.badge-no .t-label { color: var(--c-alerta); }
+
+.el-dot { width: 14px; height: 14px; border-radius: 7px; border-width: 2px; border-color: var(--c-borda); margin-right: 4px; }
+
+.icon-btn { width: 36px; height: 36px; border-radius: 8px; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.06); }
+.icon-btn:hover { background-color: rgba(255,255,255,0.16); }
+
+/* pips: cenas (claquete) e progresso de plot */
+.pip { width: 14px; height: 14px; border-radius: 3px; border-width: 2px; border-color: var(--c-tinta); margin-right: 4px; }
+.pip.is-full { background-color: var(--c-tinta); }
+.clap-pips.is-last .pip.is-full { background-color: var(--c-alerta); border-color: var(--c-alerta); }
+.plot-pips { margin-left: 8px; }
+.ppip { width: 12px; height: 12px; border-radius: 6px; border-width: 2px; border-color: var(--c-tinta); margin-right: 3px; }
+.ppip.is-full { background-color: var(--c-tinta); }
+.plot-pips-dark .ppip, .wm-pips .ppip { border-color: var(--c-plot); }
+.plot-pips-dark .ppip.is-full, .wm-pips .ppip.is-full { background-color: var(--c-plot); }
+
+/* medidor (tensão do fantasma) */
+.meter-track { height: 8px; border-radius: 4px; background-color: rgba(255,255,255,0.14); overflow: hidden; }
+.meter-fill { height: 100%; width: 0; background-color: var(--c-fantasma); border-radius: 4px; }
+.meter-fill.is-max { background-color: var(--c-perigo); }
+
+/* ---------------------------------------------------------------- Z1 Claquete */
+.claquete { position: absolute; left: 24px; top: 24px; width: 360px; padding: 0; overflow: hidden; }
+.clap-stripes { height: 20px; }
+.clap-body { padding: 8px 16px 14px 16px; }
+.clap-row1 { align-items: flex-end; }
+.clap-act { font-size: 26px; color: var(--c-tinta); margin-bottom: 2px; }
+.clap-compact { font-size: 26px; color: var(--c-tinta); margin-left: 8px; margin-bottom: 2px; }
+.clap-cap { color: var(--c-papel-texto-2); margin-right: 8px; margin-bottom: 8px; }
+.clap-scene { color: var(--c-tinta); font-size: 40px; }
+.clap-row2 { margin-top: 2px; margin-bottom: 10px; }
+.clap-left { color: var(--c-papel-texto-2); font-size: 16px; }
+.clap-row3 { margin-bottom: 8px; }
+.clap-row3 .clap-cap { margin-bottom: 0; }
+.clap-score-pill { background-color: var(--c-tinta); border-radius: 8px; padding: 0 10px 0 8px; height: 44px; }
+.clap-score-pill > .ic { margin-right: 6px; }
+.clap-score { font-size: 32px; color: var(--c-audiencia); }
+.clap-goal { font-size: 24px; color: var(--c-papel-texto-2); margin-left: 8px; }
+.clap-check { margin-left: 6px; }
+.clap-bar { height: 10px; border-radius: 5px; background-color: rgba(21,18,26,0.18); overflow: visible; }
+.clap-bar-fill { height: 100%; width: 0; border-radius: 5px; background-color: var(--c-tinta); }
+.clap-bar-fill.is-goal { background-color: #D9A400; }
+.clap-bar-goal { position: absolute; top: -4px; bottom: -4px; width: 4px; margin-left: -2px; background-color: var(--c-tinta); border-radius: 2px; }
+.claquete.is-film .clap-full { display: none; }
+.claquete.is-film .clap-cap, .claquete.is-film .clap-scene { display: none; }
+
+/* ---------------------------------------------------------------- Z2 Chip do vilão */
+.villain-chip {
+    position: absolute; top: 24px; left: 50%; translate: -50% 0;
+    padding: 8px 16px 8px 12px; border-width: 3px; border-bottom-width: 6px;
+    min-width: 340px; max-width: 560px;
+}
+.villain-chip.is-slasher { border-color: var(--c-perigo); }
+.villain-chip.is-ghost { border-color: var(--c-fantasma); }
+.villain-chip.is-unknown { opacity: 0.85; border-color: var(--c-tinta-3); }
+.villain-chip.is-stunned { border-color: var(--c-texto-3); }
+.villain-chip:hover { background-color: rgba(36,31,44,0.96); }
+.villain-icon { margin-right: 12px; width: 40px; height: 40px; }
+.villain-text { flex-shrink: 1; }
+.villain-name { font-size: 22px; color: var(--c-papel); }
+.villain-intent { font-size: 18px; color: var(--c-papel); }
+.villain-meter { width: 120px; margin-left: 16px; }
+.villain-meter-word { font-size: 16px; color: var(--c-fantasma); margin-top: 2px; -unity-text-align: middle-center; }
+.villain-chip.is-off { opacity: 0; }
+
+/* ---------------------------------------------------------------- Z2b Toasts */
+.toasts { position: absolute; top: 108px; left: 50%; translate: -50% 0; width: 440px; align-items: stretch; }
+.toast { padding: 10px 14px; margin-bottom: 8px; border-left-width: 6px; border-radius: 10px; background-color: rgba(21,18,26,0.98); }
+.toast > .ic { margin-right: 10px; }
+.toast-text { font-size: 20px; }
+.toast-ok { border-left-color: var(--c-ok); }
+.toast-perigo { border-left-color: var(--c-perigo); }
+.toast-fantasma { border-left-color: var(--c-fantasma); }
+.toast-papel { border-left-color: var(--c-papel); }
+.toast-audiencia { border-left-color: var(--c-audiencia); }
+
+/* ---------------------------------------------------------------- Z3 Roteiro */
+.script { position: absolute; top: 24px; right: 24px; width: 380px; padding: 12px 16px 14px 16px; }
+.script-header { margin-bottom: 6px; }
+.script.is-collapsed .script-header { margin-bottom: 0; }
+.script-title { color: var(--c-tinta); font-size: 16px; margin-right: 12px; }
+.script-counts .ic { margin-left: 8px; margin-right: 3px; }
+.script-counts .t-small { color: var(--c-tinta); }
+.script-link { color: var(--c-papel-texto-2); margin-right: 12px; -unity-font-style: bold; }
+.script-link:hover { color: var(--c-tinta); }
+.script-toggle { font-size: 26px; color: var(--c-tinta); width: 28px; -unity-text-align: middle-center; }
+.script-plot { min-height: 30px; padding: 2px 0; border-radius: 6px; }
+.script-plot:hover { background-color: rgba(21,18,26,0.08); }
+.script-plot > .ic { margin-right: 8px; }
+.script-plot-name { font-size: 18px; color: var(--c-tinta); flex-shrink: 1; }
+.script-plot-name.is-done { color: var(--c-papel-texto-2); }
+.script-plot.is-broken .script-plot-name { color: #B3242C; }
+.script-room { font-size: 16px; color: var(--c-papel-texto-2); margin-left: 8px; }
+.script-empty { color: var(--c-papel-texto-2); }
+.script .chip-ok { margin: 0 0 0 8px; }
+.script-duo { margin-top: 6px; }
+.script-duo > .ic { margin-right: 8px; }
+.script-duo-text { color: var(--c-tinta); font-size: 16px; flex-shrink: 1; }
+.script-arts { margin-top: 8px; flex-wrap: wrap; }
+.art-slot { width: 40px; height: 40px; border-radius: 8px; background-color: var(--c-tinta); align-items: center; justify-content: center; margin: 0 6px 4px 0; }
+
+/* ---------------------------------------------------------------- Z4 Elenco */
+.cast { position: absolute; left: 24px; bottom: 24px; align-items: flex-end; }
+.cast-card {
+    width: 104px; height: 136px; margin-right: 8px; padding: 6px 4px 6px 4px;
+    align-items: center;
+    background-color: var(--c-painel);
+    border-radius: 12px; border-width: 2px; border-bottom-width: 6px; border-color: var(--c-borda);
+    transition-property: translate, opacity, border-color;
+    transition-duration: 0.12s, 0.2s, 0.12s;
+}
+.cast-card:hover { border-color: var(--c-texto-3); }
+.cast-card.is-selected { translate: 0 -12px; border-color: var(--c-papel); border-width: 3px; border-bottom-width: 6px; }
+.cast-card.is-hunted { border-color: var(--c-perigo); }
+.cast-card.is-selected.is-hunted { border-color: var(--c-papel); }
+.portrait-wrap { width: 76px; height: 76px; align-items: center; justify-content: center; }
+.pavor-ring { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.portrait { width: 58px; height: 58px; border-radius: 29px; border-width: 2px; border-color: var(--c-borda); align-items: center; justify-content: center; }
+.portrait-initial { font-size: 32px; color: var(--c-tinta); }
+.portrait-strike { position: absolute; left: 4px; right: 4px; top: 50%; height: 5px; background-color: var(--c-perigo); rotate: -35deg; border-radius: 3px; }
+.portrait-drop { position: absolute; right: -2px; top: -2px; opacity: 0; }
+.cast-name { font-size: 16px; color: var(--c-papel); margin-top: 2px; -unity-text-align: middle-center; white-space: nowrap; }
+.cast-states { height: 22px; margin-top: 2px; }
+.cast-states .ic { margin: 0 2px; }
+.cast-out { color: var(--c-perigo); margin-top: 2px; }
+.cast-card.is-out .cast-name { color: var(--c-texto-3); }
+.cast-card.is-out { opacity: 0.75; }
+.stamp {
+    position: absolute; left: -10px; right: -10px; top: 18px;
+    rotate: -8deg; align-items: center;
+    background-color: rgba(224, 50, 60, 0.92); border-width: 2px; border-color: var(--c-papel); border-radius: 6px; padding: 0 2px 2px 2px;
+}
+.stamp-text { font-size: 20px; color: var(--c-papel); }
+.stamp-sub { font-size: 16px; color: var(--c-papel); letter-spacing: 0; }
+
+/* ---------------------------------------------------------------- Z5 Barra de ações */
+.actionbar { position: absolute; left: 488px; right: 408px; bottom: 24px; }
+.actionbar-header { color: var(--c-papel); margin-bottom: 6px; text-shadow: 0 2px 0 rgba(0,0,0,0.85); }
+.actionbar-row { flex-wrap: wrap; align-items: flex-end; }
+.actionbar-empty { align-self: flex-start; padding: 10px 14px; color: var(--c-texto-2); }
+.action-card {
+    width: 268px; height: 96px; margin: 8px 8px 0 0; padding: 8px 10px 8px 10px;
+    background-color: var(--c-painel); border-radius: 12px; border-width: 2px; border-bottom-width: 6px; border-color: var(--c-borda);
+    justify-content: space-between;
+    transition-property: translate, border-color; transition-duration: 0.12s;
+}
+.action-card:hover { translate: 0 -4px; border-color: var(--c-papel); }
+.action-card.is-danger { border-color: var(--c-perigo); }
+.action-card.is-disabled:hover { translate: 0 0; border-color: var(--c-borda); }
+.action-top > .ic { margin-right: 8px; }
+.action-verb { font-size: 22px; color: var(--c-papel); flex-shrink: 1; white-space: normal; }
+.action-bottom > .badge { margin-right: 8px; }
+.action-bottom > .ic { margin-right: 4px; }
+.action-line { font-size: 16px; color: var(--c-texto-2); flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.action-dots { margin-left: 6px; }
+.hint-line {
+    position: absolute; left: 488px; right: 408px; bottom: 44px;
+    color: var(--c-papel); text-shadow: 0 2px 0 rgba(0,0,0,0.9); -unity-text-align: middle-center;
+}
+
+/* ---------------------------------------------------------------- Z6 Gravar */
+.record-cluster { position: absolute; right: 24px; bottom: 24px; align-items: flex-end; }
+.square-btn {
+    width: 56px; height: 56px; margin-right: 8px; border-radius: 10px;
+    align-items: center; justify-content: center;
+    background-color: var(--c-painel); border-width: 2px; border-bottom-width: 5px; border-color: var(--c-borda);
+}
+.square-btn:hover { border-color: var(--c-papel); }
+.square-btn.is-active { background-color: var(--c-papel); }
+.square-btn.is-active > .ic { -unity-background-image-tint-color: var(--c-tinta); }
+.record-btn {
+    width: 240px; height: 72px; justify-content: center; border-radius: 12px; overflow: hidden;
+    background-color: var(--c-tinta); border-width: 3px; border-bottom-width: 6px; border-color: var(--c-rec);
+    transition-property: translate; transition-duration: 0.1s;
+}
+.record-btn:hover { translate: 0 -2px; background-color: #2A1418; }
+.record-btn.is-disabled { border-color: var(--c-tinta-3); }
+.rec-dot { margin-right: 10px; }
+.record-text { font-size: 26px; color: var(--c-papel); }
+.record-hold { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(255, 59, 59, 0.35); }
+
+/* menu ≡ */
+.menu { position: absolute; right: 24px; bottom: 112px; width: 480px; padding: 8px; }
+.menu-row { padding: 8px 10px; border-radius: 8px; }
+.menu-row > .ic { margin-right: 12px; }
+.menu-item:hover { background-color: rgba(255,255,255,0.08); }
+.menu-label { width: 104px; }
+.menu-sep { height: 2px; background-color: var(--c-linha); margin: 6px 4px; }
+.menu-danger .t-body { color: var(--c-alerta); }
+.menu-danger > .ic { -unity-background-image-tint-color: var(--c-alerta); }
+.seg-btn { font-size: 20px; padding: 2px 10px; margin-right: 4px; border-radius: 6px; background-color: var(--c-tinta-3); color: var(--c-texto-2); }
+.seg-btn:hover { color: var(--c-papel); }
+.seg-btn.is-active { background-color: var(--c-papel); color: var(--c-tinta); }
+
+/* ---------------------------------------------------------------- Z7 Card da sala */
+.roomcard { position: absolute; left: 24px; top: 156px; width: 440px; padding: 0; overflow: hidden; }
+.roomcard-bar { height: 6px; flex-shrink: 0; }
+.roomcard-head, .roomcard > .chips, .roomcard-mood { flex-shrink: 0; }
+.roomcard-head { padding: 8px 12px 2px 16px; }
+.roomcard-title { font-size: 32px; color: var(--c-papel); flex-shrink: 1; }
+.chips { flex-wrap: wrap; padding: 4px 16px 0 16px; }
+.roomcard-mood { padding: 0 16px 6px 16px; color: var(--c-texto-2); }
+.roomcard-scroll { flex-grow: 0; flex-shrink: 1; min-height: 0; }
+.roomcard-scroll .unity-scroll-view__content-container { padding: 0 12px 8px 16px; }
+
+/* barra de rolagem discreta (sem as setas do tema padrão) */
+.unity-scroller--vertical { width: 10px; margin: 4px 2px; border-width: 0; background-color: rgba(0,0,0,0); }
+.unity-scroller__low-button, .unity-scroller__high-button { display: none; }
+.unity-scroller--vertical .unity-base-slider__tracker { background-color: rgba(255,255,255,0.06); border-width: 0; border-radius: 5px; }
+.unity-scroller--vertical .unity-base-slider__dragger { background-color: rgba(242,234,216,0.4); border-width: 0; border-radius: 5px; }
+.unity-scroller--vertical .unity-base-slider__dragger-border { display: none; }
+.section { margin-top: 10px; }
+.section-title { margin-bottom: 6px; color: var(--c-texto-2); }
+.section-key { background-color: rgba(255,255,255,0.05); border-radius: 10px; padding: 8px 10px 4px 10px; border-left-width: 4px; border-left-color: var(--c-papel); }
+.section-key > .section-title { color: var(--c-papel); }
+.card-item { min-height: 30px; margin-bottom: 4px; border-radius: 6px; }
+.card-item:hover { background-color: rgba(255,255,255,0.06); }
+.card-item > .ic { margin-right: 10px; }
+.card-item-text { flex-shrink: 1; font-size: 20px; }
+.card-item.is-danger .card-item-text { color: #FF6B73; }
+.chips-wrap { flex-wrap: wrap; }
+.roomcard-footer { flex-shrink: 0; padding: 8px 16px 10px 16px; border-top-width: 2px; border-top-color: var(--c-linha); background-color: rgba(0,0,0,0.25); }
+.who-row { align-items: flex-start; }
+.who-btn {
+    width: 96px; margin-right: 6px; padding: 4px 2px 5px 2px; align-items: center; border-radius: 10px;
+    background-color: var(--c-tinta-2); border-width: 2px; border-color: var(--c-tinta-2);
+    transition-property: translate, border-color; transition-duration: 0.12s;
+}
+.who-btn:hover { border-color: var(--c-papel); translate: 0 -3px; }
+.who-btn.is-disabled { opacity: 0.6; }
+.who-btn.is-disabled:hover { border-color: var(--c-tinta-2); translate: 0 0; }
+.who-btn.is-selected { border-color: var(--c-texto-2); }
+.who-face { width: 34px; height: 34px; border-radius: 17px; align-items: center; justify-content: center; border-width: 2px; border-color: var(--c-borda); }
+.who-initial { font-size: 20px; color: var(--c-tinta); }
+.who-name { color: var(--c-papel); margin: 1px 0 2px 0; letter-spacing: 0; }
+
+/* ---------------------------------------------------------------- Z8 Legendas */
+.subtitles { position: absolute; bottom: 180px; left: 50%; translate: -50% 0; width: 960px; align-items: center; }
+.sub-title { padding: 4px 14px 4px 10px; margin-bottom: 10px; border-radius: 8px; border-bottom-width: 4px; }
+.sub-title > .ic { margin-right: 8px; }
+.sub-title-text { font-size: 22px; color: var(--c-tinta); }
+.sub-box {
+    min-height: 64px; max-width: 960px; padding: 12px 22px 12px 16px;
+    background-color: rgba(10, 8, 13, 0.96); border-radius: 12px; border-width: 2px; border-color: rgba(242,234,216,0.16);
+    border-left-width: 6px;
+}
+.sub-box > .ic { margin-right: 14px; width: 36px; height: 36px; }
+.sub-text { font-size: 24px; color: var(--c-papel); flex-shrink: 1; -unity-text-align: middle-left; }
+.sub-box.is-big { padding: 16px 26px 16px 18px; }
+.sub-box.is-big .sub-text { font-size: 32px; -unity-font-definition: url("Fonts/AtkinsonHyperlegibleNext-Bold_SDF.asset"); }
+.sub-box.is-big > .ic { width: 48px; height: 48px; }
+.kind-perigo { border-left-color: var(--c-perigo); }
+.kind-ok { border-left-color: var(--c-ok); }
+.kind-plot { border-left-color: var(--c-plot); }
+.kind-fantasma { border-left-color: var(--c-fantasma); }
+.kind-dupla { border-left-color: var(--c-dupla); }
+.kind-audiencia { border-left-color: var(--c-audiencia); }
+.kind-alerta { border-left-color: var(--c-alerta); }
+.kind-papel { border-left-color: var(--c-papel); }
+.sub-summary { font-size: 40px; color: var(--c-papel); text-shadow: 0 3px 0 rgba(0,0,0,0.9); }
+.sub-hint { margin-top: 8px; padding: 2px 10px; border-radius: 6px; background-color: rgba(10,8,13,0.92); color: var(--c-texto-2); }
+.fly-score { position: absolute; color: var(--c-audiencia); text-shadow: 0 3px 0 rgba(0,0,0,0.9); font-size: 32px; }
+
+/* ---------------------------------------------------------------- Z9 Monitor */
+.monitor { position: absolute; right: 24px; bottom: 112px; padding: 6px 8px 10px 8px; }
+.monitor-head { padding: 0 2px 6px 4px; }
+.monitor-head > .ic { margin-right: 8px; }
+.monitor-title { color: var(--c-papel); }
+.monitor-sub { margin-right: 10px; font-size: 16px; }
+.monitor-img { border-radius: 4px; overflow: hidden; background-color: #000; }
+.monitor-overlay { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.safe-corner { position: absolute; width: 22px; height: 22px; border-color: rgba(242,234,216,0.55); }
+.sf-tl { left: 8px; top: 8px; border-left-width: 2px; border-top-width: 2px; }
+.sf-tr { right: 8px; top: 8px; border-right-width: 2px; border-top-width: 2px; }
+.sf-bl { left: 8px; bottom: 8px; border-left-width: 2px; border-bottom-width: 2px; }
+.sf-br { right: 8px; bottom: 8px; border-right-width: 2px; border-bottom-width: 2px; }
+.mon-room { position: absolute; translate: -50% -150%; padding: 1px 6px; border-radius: 6px; background-color: rgba(10,8,13,0.88); }
+.mon-room > .ic { margin-right: 3px; }
+.mon-room-text { color: var(--c-papel); font-size: 16px; letter-spacing: 0; }
+.mon-room.is-unknown .mon-room-text { color: var(--c-texto-3); }
+.mon-room.is-card { background-color: var(--c-papel); }
+.mon-room.is-card .mon-room-text { color: var(--c-tinta); }
+.mon-dot { position: absolute; width: 14px; height: 14px; border-radius: 7px; translate: -50% -50%; border-width: 2px; border-color: var(--c-borda); }
+.mon-dot.is-selected { border-color: var(--c-papel); border-width: 3px; width: 18px; height: 18px; border-radius: 9px; }
+.mon-frame { position: absolute; width: 64px; height: 64px; translate: -50% -50%; border-radius: 8px; border-width: 3px; align-items: center; justify-content: flex-start; }
+.mon-next { border-color: var(--c-perigo); }
+.mon-next.is-ghost { border-color: var(--c-fantasma); }
+.mon-next.is-ghost .mon-frame-icon { display: none; }
+.mon-frame-icon { margin-top: -26px; }
+.mon-ghost { border-color: var(--c-fantasma); justify-content: flex-end; }
+.mon-ghost-meter { width: 52px; margin-bottom: -16px; }
+.mon-villain { position: absolute; translate: -50% -50%; }
+
+/* ---------------------------------------------------------------- Modo filme */
+.letterbox { position: absolute; left: 0; right: 0; height: 0; background-color: #000; }
+.letterbox-top { top: 0; }
+.letterbox-bottom { bottom: 0; }
+.viewfinder { position: absolute; left: 32px; right: 32px; top: 24px; bottom: 24px; transition-property: opacity; transition-duration: 0.2s; }
+.vf-corner { position: absolute; width: 48px; height: 48px; border-color: rgba(242,234,216,0.6); }
+.vf-tl { left: 0; top: 0; border-left-width: 4px; border-top-width: 4px; }
+.vf-tr { right: 0; top: 0; border-right-width: 4px; border-top-width: 4px; }
+.vf-bl { left: 0; bottom: 0; border-left-width: 4px; border-bottom-width: 4px; }
+.vf-br { right: 0; bottom: 0; border-right-width: 4px; border-bottom-width: 4px; }
+.rec-badge { position: absolute; right: 24px; top: 20px; }
+.rec-badge > .ic { margin-right: 8px; }
+.rec-text { font-size: 28px; color: var(--c-papel); text-shadow: 0 2px 0 rgba(0,0,0,0.8); }
+
+/* ---------------------------------------------------------------- Marcadores no mundo */
+.wm-room { position: absolute; translate: -50% -50%; align-items: center; }
+.wm-room-row { padding: 2px 10px 4px 8px; border-radius: 8px; background-color: rgba(10,8,13,0.8); }
+.wm-room-row > .ic { margin-right: 6px; }
+.wm-room-name { font-size: 22px; color: var(--c-papel); text-shadow: 0 2px 0 rgba(0,0,0,0.9); }
+.wm-room.is-hover .wm-room-row { background-color: rgba(10,8,13,0.95); border-width: 2px; border-color: var(--c-papel); }
+.wm-pips { margin: 4px 0 0 0; }
+.wm-telegraph { position: absolute; translate: -50% -50%; align-items: center; }
+.wm-telegraph-text { color: var(--c-papel); background-color: var(--c-perigo); padding: 0 8px; border-radius: 6px; margin-top: 2px; }
+.wm-ghost { position: absolute; translate: -50% -50%; width: 140px; align-items: center; padding: 6px 10px 4px 10px; border-radius: 8px; background-color: rgba(10,8,13,0.85); }
+.wm-ghost-track { width: 120px; height: 10px; border-radius: 5px; }
+.wm-ghost-word { color: var(--c-fantasma); margin-top: 3px; text-shadow: 0 2px 0 rgba(0,0,0,0.9); }
+.wm-edge { position: absolute; translate: -50% -50%; }
+.wm-name { position: absolute; translate: -50% -100%; padding: 2px 10px; border-radius: 8px; background-color: var(--c-papel); }
+.wm-name-text { font-size: 16px; color: var(--c-tinta); }
+.wm-ring { position: absolute; width: 56px; height: 56px; translate: -50% -50%; }
+.wm-heart { position: absolute; translate: -50% -50%; }
+
+/* ---------------------------------------------------------------- Tooltip */
+.tooltip {
+    position: absolute; max-width: 360px; padding: 12px;
+    background-color: var(--c-tinta); border-radius: 10px; border-width: 2px; border-color: rgba(242,234,216,0.3);
+}
+.tooltip-text { font-size: 18px; color: var(--c-papel); white-space: normal; }
+
+/* ---------------------------------------------------------------- Z10 Modais */
+.scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.88); align-items: center; justify-content: center; }
+.scrim-light { background-color: rgba(0,0,0,0.85); }
+.modal { align-items: center; }
+.modal-title { margin-bottom: 8px; -unity-text-align: middle-center; }
+.modal-sub { margin-bottom: 16px; -unity-text-align: middle-center; }
+.modal-buttons { margin-top: 24px; justify-content: center; }
+.btn {
+    height: 56px; padding: 0 24px; margin: 0 8px; border-radius: 12px; justify-content: center;
+    border-width: 2px; border-bottom-width: 6px; border-color: var(--c-borda);
+    transition-property: translate; transition-duration: 0.1s;
+}
+.btn > .ic { margin-right: 10px; }
+.btn:hover { translate: 0 -3px; }
+.btn-primary { background-color: var(--c-tinta); }
+.btn-primary .t-btn { color: var(--c-papel); font-size: 24px; }
+.btn-secondary { background-color: var(--c-tinta-3); }
+.btn-secondary .t-btn { color: var(--c-papel); }
+.btn-danger { background-color: var(--c-perigo); }
+.btn-danger .t-btn { color: var(--c-papel); }
+
+.modal-act { width: 960px; padding: 32px 40px 32px 40px; }
+.modal-act .modal-title, .modal-end .modal-title { color: var(--c-tinta); }
+.act-score { margin: 16px 0 8px 0; }
+.act-cap { color: var(--c-papel-texto-2); margin-right: 16px; }
+.act-num { font-size: 64px; color: var(--c-tinta); }
+.act-goal { font-size: 36px; color: var(--c-papel-texto-2); margin-left: 12px; }
+.act-stamp { margin-left: 28px; padding: 2px 14px; border-width: 4px; border-radius: 8px; rotate: -8deg; }
+.act-stamp .t-marker { font-size: 36px; }
+.stamp-ok { border-color: #2E8A3C; }
+.stamp-ok .t-marker { color: #2E8A3C; }
+.stamp-bad { border-color: #B3242C; }
+.stamp-bad .t-marker { color: #B3242C; }
+.act-stats { margin-top: 12px; justify-content: center; flex-wrap: wrap; }
+.act-stat { margin: 0 14px; }
+.act-stat > .ic { margin-right: 8px; }
+.act-stat .t-body { color: var(--c-tinta); }
+.act-next { margin-top: 18px; color: var(--c-papel-texto-2); }
+
+.modal-pick { width: 1100px; }
+.pick-cards { justify-content: center; align-items: flex-start; }
+.pick-card {
+    width: 300px; height: 360px; margin: 0 14px; padding: 0 20px 20px 20px; align-items: center; overflow: hidden;
+    transition-property: translate; transition-duration: 0.15s;
+}
+.pick-card:hover { translate: 0 -16px; border-color: var(--c-papel); }
+.pick-band { height: 12px; margin: 0 -22px 20px -22px; align-self: stretch; }
+.pick-icon-wrap { width: 128px; height: 128px; border-radius: 20px; background-color: var(--c-tinta); align-items: center; justify-content: center; margin-bottom: 16px; }
+.pick-name { font-size: 28px; color: var(--c-tinta); -unity-text-align: middle-center; margin-bottom: 10px; }
+.pick-desc { color: var(--c-tinta); -unity-text-align: middle-center; font-size: 22px; -unity-font-definition: url("Fonts/AtkinsonHyperlegibleNext-Bold_SDF.asset"); }
+.pick-skip { margin-top: 28px; color: var(--c-texto-2); -unity-font-style: bold; }
+.pick-skip:hover { color: var(--c-papel); }
+
+.poster {
+    width: 320px; height: 440px; margin: 0 16px; padding: 0 0 18px 0; align-items: center; overflow: hidden;
+    background-color: var(--c-tinta); border-radius: 14px; border-width: 4px; border-bottom-width: 8px;
+    transition-property: translate; transition-duration: 0.15s;
+}
+.poster:hover { translate: 0 -16px; }
+.poster-slasher { border-color: var(--c-perigo); }
+.poster-ghost { border-color: var(--c-fantasma); }
+.poster-band { align-self: stretch; height: 40px; justify-content: center; }
+.poster-slasher .poster-band { background-color: var(--c-perigo); }
+.poster-ghost .poster-band { background-color: var(--c-fantasma); }
+.poster-family { color: var(--c-tinta); font-size: 18px; letter-spacing: 4px; }
+.poster-art { width: 100%; height: 150px; align-items: center; justify-content: center; }
+.poster-name { font-size: 34px; color: var(--c-papel); -unity-text-align: middle-center; margin: 0 16px 8px 16px; }
+.poster-how { color: var(--c-papel); -unity-text-align: middle-center; margin: 0 18px 8px 18px; }
+.poster-genre { color: var(--c-texto-2); margin-bottom: 6px; }
+.poster-desc { color: var(--c-texto-2); -unity-text-align: middle-center; margin: 0 18px; }
+
+.modal-end { width: 900px; padding: 32px 40px; }
+.end-stamp { margin: 6px 0 4px 0; }
+.end-cap { color: var(--c-papel-texto-2); margin-top: 14px; }
+.end-cast { margin-top: 8px; justify-content: center; }
+.end-actor { width: 140px; align-items: center; }
+.end-actor .t-bold { color: var(--c-tinta); }
+.end-face { width: 72px; height: 72px; border-radius: 36px; border-width: 3px; border-color: var(--c-tinta); align-items: center; justify-content: center; margin-bottom: 6px; }
+.end-initial { font-size: 40px; color: var(--c-tinta); }
+.end-fate { color: var(--c-papel-texto-2); }
+.end-actor.is-out .end-fate { color: #B3242C; }
+.end-seed { margin-top: 18px; color: var(--c-papel-texto-2); white-space: nowrap; }
+
+.modal-small { width: 620px; padding: 28px 32px; }
+.modal-wide { width: 860px; max-height: 80%; padding: 20px 24px 24px 24px; align-items: stretch; }
+.log-scroll { flex-shrink: 1; max-height: 640px; }
+.log-block { padding: 10px 0; border-bottom-width: 1px; border-bottom-color: var(--c-linha); }
+.log-title { font-size: 20px; color: var(--c-papel); margin-bottom: 4px; }
+.log-line { color: var(--c-texto-2); margin-left: 12px; }
+.help-row { padding: 6px 0; border-bottom-width: 1px; border-bottom-color: var(--c-linha); }
+.help-key { width: 300px; font-size: 18px; color: var(--c-papel); }
+.help-val { flex-shrink: 1; color: var(--c-texto-2); }

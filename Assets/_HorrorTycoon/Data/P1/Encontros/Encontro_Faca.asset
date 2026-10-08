@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15269c3691311754ea866d4daf91587f, type: 3}
+  m_Name: Encontro_Faca
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Run.EncounterDef
+  displayName: Faca na gaveta
+  description: Uma faca afiada esquecida.
+  points: 30
+  pavorDelta: 0
+  element: {fileID: 11400000, guid: 5071c38ec2f119246b39de2bae783978, type: 2}
+  tool: {fileID: 11400000, guid: 2224743e4751adb4495372f4197b868c, type: 2}

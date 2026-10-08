@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79038ab644ccc074d81b237349cc8f01, type: 3}
+  m_Name: HouseArtKit_Provisorio
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Rooms.Building.HouseArtKit
+  wallHeight: 2.7
+  wallThickness: 0.12
+  doorHeight: 2.1
+  maxWallPiece: 4
+  wallMaterial: {fileID: 2100000, guid: b401585cdddb747408894464d1b0a023, type: 2}
+  exteriorWallMaterial: {fileID: 0}
+  lintelMaterial: {fileID: 0}
+  floorMaterial: {fileID: 2100000, guid: 4f4494f585e61874699381cc87c0378a, type: 2}
+  roomFloorMaterial: {fileID: 0}
+  socialFloorMaterial: {fileID: 0}
+  corridorFloorMaterial: {fileID: 0}
+  foundationMaterial: {fileID: 2100000, guid: 8acc76ae7e26e1e45b21b1b98a8fade2, type: 2}
+  trimMaterial: {fileID: 2100000, guid: 380e5f9a709c8cf49868070784bce3c4, type: 2}
+  eaveMaterial: {fileID: 2100000, guid: d0729bac2b9008e4f88eb0754cb20e67, type: 2}
+  fogVolumeMaterial: {fileID: 2100000, guid: 0235339605e5242458ff2f1b9df9b37b, type: 2}
+  fogLayerMaterial: {fileID: 2100000, guid: 3964a61e70970194395b52264be0c259, type: 2}
+  fogTapeMaterial: {fileID: 2100000, guid: 0b15736734e4c5941b314992667855c6, type: 2}
+  lampIntensity: 2.6
+  corridorLampIntensity: 2.2
+  lampRange: 5.5
+  lampHeight: 2.45
+  lampCordMaterial: {fileID: 2100000, guid: 02d0c9bbb7b86a948a43fc31c775860c, type: 2}
+  lampShadeMaterial: {fileID: 2100000, guid: fc6be70699d4aad4d97363e2cd5619ff, type: 2}
+  lampBulbMaterial: {fileID: 2100000, guid: 7aa041b4b1889f343a75954c002c0261, type: 2}
+  lampShaftMaterial: {fileID: 2100000, guid: d7cfe3e0cca8415479d45c7f55f9e5e0, type: 2}
+  lampShaftMesh: {fileID: 4300000, guid: ba24fc50bb856ed418de473c4a20f709, type: 2}
+  windowChance: 0.6
+  windowFrameMaterial: {fileID: 2100000, guid: 81d9312f1463acc4dafdb835496aed71, type: 2}
+  windowPaneMaterial: {fileID: 2100000, guid: 4c1be96c7fa9c19408e8c13665d639a9, type: 2}
+  windowBeamMaterial: {fileID: 2100000, guid: f9c68142936708541822d8b363dff370, type: 2}
+  eaves: 1
+  porch: 1
+  path: 1
+  deckMaterial: {fileID: 2100000, guid: 61b1c44f265d2e14a8d86e0045c03121, type: 2}
+  postMaterial: {fileID: 2100000, guid: 63be694e15244344cb6267fba93631ce, type: 2}
+  pathMaterial: {fileID: 2100000, guid: 99822823c928e554b840341166aa50c7, type: 2}
+  porchFixtureMaterial: {fileID: 2100000, guid: 9adf9f776ec33ef4bbff136e5f4ca75c, type: 2}
+  porchLightIntensity: 2.4
+  porchLightRange: 5.5
+  doorFramePrefab: {fileID: 0}
+  windowPrefab: {fileID: 0}
+  lampPrefab: {fileID: 0}
+  porchPrefab: {fileID: 0}
+  clearDoorways: 1
+  doorwayClearDepth: 1

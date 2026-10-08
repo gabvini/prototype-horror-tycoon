@@ -36,3 +36,9 @@ crashlytics-build.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Capturas locais (fora do Git)
+/Captures/
+/VisualLabCaptures/
+/Assets/Screenshots/
+/Assets/Screenshots.meta

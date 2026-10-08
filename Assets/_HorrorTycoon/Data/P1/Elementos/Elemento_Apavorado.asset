@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29a1c2aad2f35be45b93ef31ee5c64e5, type: 3}
+  m_Name: Elemento_Apavorado
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Scoring.ElementDef
+  displayName: Apavorado
+  description: "O ator est\xE1 com pavor 60+ (autom\xE1tico)."
+  color: {r: 0.9, g: 0.9, b: 0.9, a: 1}
+  subgenre: {fileID: 0}
+  holder: 0
+  strength: 1
+  validFor:
+  - {fileID: 11400000, guid: 5458ae4768d77174c945c94c2d66868f, type: 2}
+  - {fileID: 11400000, guid: 7cf1fd094bf96cd4490bc781477627d8, type: 2}
+  autoRule: 2
+  autoValue: 60

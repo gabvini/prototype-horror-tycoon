@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 609bd73cfeb411c4fab904937ba71721, type: 3}
+  m_Name: Vilao_Mascarado
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Run.VillainDef
+  displayName: O Mascarado
+  description: "Slasher. Anda 1 sala por cena, anuncia para onde vai e ca\xE7a quem
+    est\xE1 sozinho. Armas, armadilhas e v\xEDtimas isoladas valem em dobro."
+  color: {r: 0.85, g: 0.25, b: 0.25, a: 1}
+  subgenre: {fileID: 11400000, guid: e95fbe8788b1741479746beeb4c2ccd9, type: 2}
+  look: 0
+  family: 1

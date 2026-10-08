@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9066719329531c4479729bb9bec236f0, type: 3}
+  m_Name: Regras
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Core.GameRulesDef
+  exploreActionCost: 1
+  directStepCost: 1
+  toolStepCost: 1
+  maxToolsPerActor: 2
+  pavorLimit: 100
+  villainTagWeight: 2
+  villainEncounterBias: 2
+  villainNpcEnabled: 1
+  revealVillain: 1
+  villainFirstActIndex: 1
+  villainMovesPerBeat: 1
+  repelScore: 80
+  repelPavor: 10
+  repelStunBeats: 2
+  groupScarePavor: 30
+  groupScareRetreat: 1
+  groupScareStunBeats: 1
+  villainCatchPayoff: {fileID: 11400000, guid: 7cf1fd094bf96cd4490bc781477627d8, type: 2}
+  tenseThreshold: 30
+  scaredThreshold: 60

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d269490b11de1bc4285370c6e56999d2, type: 3}
+  m_Name: Ator_FinalGirl
+  m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Actors.ActorDef
+  displayName: Final Girl
+  description: A Final Girl. Sobrevive e segura o grupo.
+  color: {r: 0.9, g: 0.75, b: 0.2, a: 1}
+  tags: []
+  doorsPerStep: 1
+  startingPavor: 0
+  role: 3
+  roleTitle: Suporte
+  passiveText: "Acalma quem est\xE1 com ela. Testemunhar uma morte a deixa determinada
+    (pavor zera)."
+  plots: []

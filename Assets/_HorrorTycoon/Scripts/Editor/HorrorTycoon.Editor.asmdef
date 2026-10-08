@@ -1,0 +1,23 @@
+{
+    "name": "HorrorTycoon.Editor",
+    "rootNamespace": "HorrorTycoon.EditorTools",
+    "references": [
+        "HorrorTycoon",
+        "HorrorTycoon.Rendering",
+        "Unity.Cinemachine",
+        "Unity.AI.Navigation",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
