@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using HorrorTycoon.Art;
 using HorrorTycoon.Rooms.Generation;
@@ -20,6 +21,10 @@ namespace HorrorTycoon.Rooms.Building
     ///
     /// Arte: tudo vem do HouseArtKit (materiais/prefabs), do FurnitureKit ou do RoomDef.interiorPrefab.
     /// Mundo: HouseWorldMap (fachada da frente em z = frontZ; pegada centrada em x = 0). Publica HouseBounds.
+    ///
+    /// CASA POR ESCOLHA (layout.GrowsByDraft): começa só com o esqueleto; portas para o vazio ficam FECHADAS (folha com
+    /// colisor) e com uma marcação de fita no chão do lado de fora. AddRoom(i) monta a sala nova e refaz só as paredes
+    /// que mudaram (cada trecho de layout.Walls é um grupo com chave própria); Assemble(i) anima a sala "se montando".
     /// </summary>
     public class HouseBuilder : MonoBehaviour
     {
@@ -49,7 +54,7 @@ namespace HorrorTycoon.Rooms.Building
         private sealed class PieceInfo
         {
             public WallCutaway Cut;
-            public int Wall;
+            public HouseWall Wall;
             public bool AlongX;
             public float Line;      // coordenada fixa (mundo)
             public float From, To;  // ao longo da parede (mundo)
@@ -58,12 +63,46 @@ namespace HorrorTycoon.Rooms.Building
             public float OutSign;   // externas: +1/-1 no eixo da normal (para fora da casa)
         }
 
+        /// <summary>Um trecho de layout.Walls montado: pedaços, batente, janela, beiral (e a folha da porta para o vazio).</summary>
+        private sealed class WallGroup
+        {
+            public Transform Root;
+            public HouseWall Wall;
+            public readonly List<PieceInfo> Pieces = new List<PieceInfo>();
+            /// <summary>Espaço dono da janela (-1 = sem janela).</summary>
+            public int WindowSpace = -1;
+            public readonly List<Renderer> Windows = new List<Renderer>();
+            public readonly List<Renderer> Beams = new List<Renderer>();
+        }
+
+        /// <summary>Marcação de fita do lado de fora de uma porta para o vazio.</summary>
+        private sealed class SiteVisual
+        {
+            public GameObject Root;
+            public Renderer[] Tape;
+            public bool Available = true;
+            public bool Highlighted;
+        }
+
+        [Header("Casa por escolha")]
+        [Tooltip("Duração da animação de uma sala nova se montando (s).")]
+        [SerializeField] private float assembleSeconds = 2.4f;
+        [Tooltip("Profundidade da marcação de fita do lado de fora da porta para o vazio (m).")]
+        [SerializeField] private float siteMarkDepth = 2.2f;
+
+        private static readonly Color SiteTape = new Color(0.95f, 0.78f, 0.3f, 0.85f);
+        private static readonly Color SiteTapeHover = new Color(1f, 0.93f, 0.55f, 1f);
+        private static readonly Color SiteTapeDim = new Color(0.55f, 0.5f, 0.42f, 0.35f);
+
         private HouseArtKit kit;
-        private Transform root, wallsRoot, decorRoot;
+        private Transform root, wallsRoot, decorRoot, sitesRoot;
         private readonly List<RoomAnchor> anchors = new List<RoomAnchor>();
-        private readonly Dictionary<int, List<Renderer>> windowsBySpace = new Dictionary<int, List<Renderer>>();
         private readonly Dictionary<int, List<Renderer>> glowsBySpace = new Dictionary<int, List<Renderer>>();
         private readonly List<PieceInfo> pieces = new List<PieceInfo>();
+        private readonly Dictionary<string, WallGroup> wallGroups = new Dictionary<string, WallGroup>();
+        private readonly List<WallGroup> lastNewExterior = new List<WallGroup>();
+        private readonly Dictionary<int, SiteVisual> siteVisuals = new Dictionary<int, SiteVisual>();
+        private MaterialPropertyBlock siteBlock;
         private readonly Dictionary<long, Material> fallbackMats = new Dictionary<long, Material>();
         private float[] interiorYaw = new float[0];
         private int[] lightGroups = new int[0];
@@ -110,11 +149,12 @@ namespace HorrorTycoon.Rooms.Building
             wallsRoot.SetParent(root, false);
             decorRoot = new GameObject("Enfeites (somem com o corte)").transform;
             decorRoot.SetParent(root, false);
+            sitesRoot = new GameObject("Portas para o vazio").transform;
+            sitesRoot.SetParent(root, false);
 
             for (int i = 0; i < n; i++) BuildSpace(i);
-            BuildWalls();
-            BuildWindows();
-            if (kit.eaves) BuildEaves();
+            SyncWalls();
+            SyncSites();
             BuildPorchAndPath();
             MarkSeeThrough(wallsRoot);
             MarkSeeThrough(decorRoot);
@@ -122,9 +162,17 @@ namespace HorrorTycoon.Rooms.Building
             foreach (var anchor in anchors)
             {
                 int i = anchor.SlotIndex;
-                windowsBySpace.TryGetValue(i, out var windows);
-                glowsBySpace.TryGetValue(i, out var glows);
-                anchor.ConfigureVisuals(windows != null ? windows.ToArray() : null, glows != null ? glows.ToArray() : null);
+                var windows = new List<Renderer>();
+                glowsBySpace.TryGetValue(i, out var lamp);
+                var glows = lamp != null ? new List<Renderer>(lamp) : new List<Renderer>();
+                foreach (var g in wallGroups.Values)
+                {
+                    if (g.WindowSpace != i) continue;
+                    windows.AddRange(g.Windows);
+                    glows.AddRange(g.Beams);
+                }
+                anchor.ConfigureVisuals(windows.ToArray(), glows.ToArray());
+                anchor.gameObject.SetActive(true);
             }
 
             root.gameObject.SetActive(true);
@@ -161,11 +209,13 @@ namespace HorrorTycoon.Rooms.Building
                 root.gameObject.SetActive(false); // some já das buscas (FindObjectsByType ignora inativos)
                 Destroy(root.gameObject);
             }
-            root = wallsRoot = decorRoot = null;
+            root = wallsRoot = decorRoot = sitesRoot = null;
             anchors.Clear();
-            windowsBySpace.Clear();
             glowsBySpace.Clear();
             pieces.Clear();
+            wallGroups.Clear();
+            lastNewExterior.Clear();
+            siteVisuals.Clear();
             Layout = null;
             Map = null;
         }
@@ -176,9 +226,273 @@ namespace HorrorTycoon.Rooms.Building
             return null;
         }
 
+        // ================================================================== Casa por escolha
+
+        /// <summary>
+        /// Sala nova na planta (o FilmRun já pôs em Layout): monta o espaço e refaz só as paredes que mudaram.
+        /// Devolve o RoomAnchor (já ligado; o Bind fica com quem chamou). Depois do Bind e do NavMesh: Assemble(index).
+        /// </summary>
+        public RoomAnchor AddRoom(int index)
+        {
+            if (root == null || Layout == null || index < 0 || index >= Layout.Spaces.Count) return null;
+            if (AnchorOf(index) != null) return AnchorOf(index);
+
+            System.Array.Resize(ref interiorYaw, Layout.Spaces.Count);
+            // Guloso na ordem dos índices: os grupos de luz dos espaços antigos não mudam.
+            lightGroups = HouseWorldMap.LightGroups(Layout, kit.lampRange, LightGroupCount);
+
+            var anchor = BuildSpace(index);
+            var fresh = SyncWalls();
+            SyncSites();
+
+            lastNewExterior.Clear();
+            var windows = new Dictionary<int, List<Renderer>>();
+            var beams = new Dictionary<int, List<Renderer>>();
+            foreach (var g in fresh)
+            {
+                MarkSeeThrough(g.Root);
+                // Só as paredes de fora da sala nova sobem do chão; as divisórias com espaços antigos já estavam lá.
+                if (g.Wall.IsExterior && g.Wall.A == index) lastNewExterior.Add(g);
+                if (g.WindowSpace < 0) continue;
+                if (!windows.TryGetValue(g.WindowSpace, out var w)) windows[g.WindowSpace] = w = new List<Renderer>();
+                if (!beams.TryGetValue(g.WindowSpace, out var b)) beams[g.WindowSpace] = b = new List<Renderer>();
+                w.AddRange(g.Windows);
+                b.AddRange(g.Beams);
+            }
+
+            glowsBySpace.TryGetValue(index, out var lamp);
+            var glows = lamp != null ? new List<Renderer>(lamp) : new List<Renderer>();
+            if (beams.TryGetValue(index, out var ownBeams)) glows.AddRange(ownBeams);
+            anchor.ConfigureVisuals(windows.TryGetValue(index, out var ownWin) ? ownWin.ToArray() : null, glows.ToArray());
+            anchor.gameObject.SetActive(true);
+
+            // Janelas novas em paredes de espaços antigos (um trecho externo que foi dividido).
+            foreach (var pair in windows)
+            {
+                if (pair.Key == index) continue;
+                AnchorOf(pair.Key)?.AddVisuals(pair.Value.ToArray(), beams[pair.Key].ToArray());
+            }
+            return anchor;
+        }
+
+        /// <summary>Marcações de fita: uma por porta para o vazio ainda aberta.</summary>
+        private void SyncSites()
+        {
+            var gone = new List<int>();
+            foreach (var pair in siteVisuals)
+            {
+                if (pair.Key < Layout.Sites.Count && Layout.Sites[pair.Key].IsOpen) continue;
+                if (pair.Value.Root != null) Destroy(pair.Value.Root);
+                gone.Add(pair.Key);
+            }
+            foreach (int k in gone) siteVisuals.Remove(k);
+
+            var tapeMat = FxMat(null, SiteTape);
+            if (tapeMat == null) return;
+            foreach (var site in Layout.Sites)
+            {
+                if (!site.IsOpen || siteVisuals.ContainsKey(site.Index)) continue;
+                Vector3 door = Map.ToWorld(site.Position);
+                Vector3 outW = HouseWorldMap.OutwardWorld(site.Outward);
+                var go = new GameObject($"Porta_para_o_vazio_{site.Index:00}");
+                go.transform.SetParent(sitesRoot, false);
+                go.transform.position = door + outW * (siteMarkDepth * 0.5f + 0.1f);
+                go.transform.rotation = Quaternion.LookRotation(outW, Vector3.up);
+
+                // Retângulo de fita no chão (largura × profundidade, +Z local = para fora) e um X no meio.
+                float hw = site.Width * 0.5f + 0.7f, hd = siteMarkDepth * 0.5f;
+                var tapes = new List<Renderer>();
+                void T(Vector3 pos, Vector2 size, float yaw)
+                {
+                    var q = Primitive(PrimitiveType.Quad, go.transform, "Fita_Marcacao", pos, new Vector3(size.x, size.y, 1f), tapeMat, false);
+                    q.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(90f, 0f, 0f);
+                    tapes.Add(NoShadow(q));
+                }
+                T(new Vector3(0f, 0.03f, -hd), new Vector2(hw * 2f, 0.07f), 0f);
+                T(new Vector3(0f, 0.03f, hd), new Vector2(hw * 2f, 0.07f), 0f);
+                T(new Vector3(-hw, 0.03f, 0f), new Vector2(0.07f, hd * 2f), 0f);
+                T(new Vector3(hw, 0.03f, 0f), new Vector2(0.07f, hd * 2f), 0f);
+                T(new Vector3(0f, 0.031f, 0f), new Vector2(0.9f, 0.07f), 45f);
+                T(new Vector3(0f, 0.031f, 0f), new Vector2(0.9f, 0.07f), -45f);
+                siteVisuals[site.Index] = new SiteVisual { Root = go, Tape = tapes.ToArray() };
+            }
+            foreach (var pair in siteVisuals) ApplySiteColor(pair.Value);
+        }
+
+        /// <summary>Porta para o vazio cuja marcação no chão contém o ponto (mundo). -1 = nenhuma.</summary>
+        public int SiteAt(Vector3 world)
+        {
+            if (Layout == null) return -1;
+            foreach (var pair in siteVisuals)
+            {
+                if (pair.Value.Root == null) continue;
+                Vector3 local = pair.Value.Root.transform.InverseTransformPoint(world);
+                var site = Layout.Sites[pair.Key];
+                float hw = site.Width * 0.5f + 0.7f, hd = siteMarkDepth * 0.5f;
+                if (Mathf.Abs(local.x) <= hw && Mathf.Abs(local.z) <= hd + 0.3f && Mathf.Abs(local.y) < 1.5f) return pair.Key;
+            }
+            return -1;
+        }
+
+        /// <summary>Centro da marcação no chão (onde a câmera e o marcador da HUD olham).</summary>
+        public Vector3 SitePoint(int site) =>
+            siteVisuals.TryGetValue(site, out var v) && v.Root != null ? v.Root.transform.position : Vector3.zero;
+
+        public void SetSiteHighlight(int site, bool on)
+        {
+            if (!siteVisuals.TryGetValue(site, out var v)) return;
+            v.Highlighted = on;
+            ApplySiteColor(v);
+        }
+
+        /// <summary>Porta sem nenhuma sala que caiba: fita apagada.</summary>
+        public void SetSiteAvailable(int site, bool available)
+        {
+            if (!siteVisuals.TryGetValue(site, out var v) || v.Available == available) return;
+            v.Available = available;
+            ApplySiteColor(v);
+        }
+
+        private void ApplySiteColor(SiteVisual v)
+        {
+            siteBlock ??= new MaterialPropertyBlock();
+            Color c = !v.Available ? SiteTapeDim : v.Highlighted ? SiteTapeHover : SiteTape;
+            foreach (var r in v.Tape)
+            {
+                if (r == null) continue;
+                r.GetPropertyBlock(siteBlock);
+                siteBlock.SetColor(ToonMaterials.BaseColorId, c);
+                r.SetPropertyBlock(siteBlock);
+            }
+        }
+
+        // ------------------------------------------------------------------ Animação: a sala se montando
+
+        private struct AnimItem
+        {
+            public Transform T;
+            public Vector3 Pos, Scale;
+            public float Delay, Duration;
+            public int Kind; // 0 = piso (abre em X/Z), 1 = sobe do chão, 2 = cai do alto, 3 = lâmpada desce
+        }
+
+        /// <summary>
+        /// A sala nova "se monta" (chamar depois do Bind e do NavMesh, com tudo já na posição final):
+        /// piso abre do centro → paredes de fora sobem do chão, uma depois da outra → móveis caem no lugar com quique →
+        /// a lâmpada desce e acende no tranco. Só visual (o NavMesh já foi calculado com a sala pronta).
+        /// </summary>
+        public IEnumerator Assemble(int index)
+        {
+            var anchor = AnchorOf(index);
+            if (anchor == null) yield break;
+            float total = Mathf.Max(0.5f, assembleSeconds);
+            var items = new List<AnimItem>();
+            Transform space = anchor.transform;
+
+            foreach (Transform child in space)
+            {
+                if (child.name == "Fundacao" || child.name == "Piso")
+                    items.Add(new AnimItem { T = child, Pos = child.localPosition, Scale = child.localScale, Delay = 0f, Duration = total * 0.22f, Kind = 0 });
+                else if (child.name == "Lampada")
+                    items.Add(new AnimItem { T = child, Pos = child.localPosition, Scale = child.localScale, Delay = total * 0.72f, Duration = total * 0.2f, Kind = 3 });
+            }
+
+            // Paredes de fora: em volta da sala, a partir da porta.
+            Vector3 door = anchor.DoorPoint;
+            var walls = new List<WallGroup>(lastNewExterior);
+            walls.Sort((a, b) => WallDistance(a, door).CompareTo(WallDistance(b, door)));
+            for (int k = 0; k < walls.Count; k++)
+            {
+                var t = walls[k].Root;
+                if (t == null) continue;
+                items.Add(new AnimItem { T = t, Pos = t.localPosition, Scale = t.localScale,
+                    Delay = total * (0.15f + 0.3f * k / Mathf.Max(1, walls.Count)), Duration = total * 0.22f, Kind = 1 });
+            }
+
+            // Móveis: cada filho do Interior cai do alto, um depois do outro.
+            Transform interior = space.Find("Interior");
+            if (interior != null)
+            {
+                int n = interior.childCount;
+                for (int k = 0; k < n; k++)
+                {
+                    var t = interior.GetChild(k);
+                    items.Add(new AnimItem { T = t, Pos = t.localPosition, Scale = t.localScale,
+                        Delay = total * (0.4f + 0.32f * k / Mathf.Max(1, n)), Duration = total * 0.2f, Kind = 2 });
+                }
+            }
+
+            anchor.SetLampPower(false);
+            for (int k = 0; k < items.Count; k++) Pose(items[k], 0f);
+
+            float time = 0f;
+            while (time < total)
+            {
+                time += Time.deltaTime;
+                foreach (var it in items) Pose(it, Mathf.Clamp01((time - it.Delay) / Mathf.Max(0.01f, it.Duration)));
+                yield return null;
+            }
+            foreach (var it in items) Pose(it, 1f);
+            anchor.SetLampPower(true);
+        }
+
+        private float WallDistance(WallGroup g, Vector3 door)
+        {
+            if (g.Root == null || g.Pieces.Count == 0) return 0f;
+            var p = g.Pieces[0];
+            float mid = (p.From + p.To) * 0.5f;
+            Vector3 c = p.AlongX ? new Vector3(mid, 0f, p.Line) : new Vector3(p.Line, 0f, mid);
+            return (c - door).sqrMagnitude;
+        }
+
+        private void Pose(AnimItem it, float k)
+        {
+            if (it.T == null) return;
+            switch (it.Kind)
+            {
+                case 0: // piso abre do centro
+                {
+                    float e = EaseOutBack(k);
+                    it.T.localScale = new Vector3(it.Scale.x * Mathf.Max(0.001f, e), it.Scale.y, it.Scale.z * Mathf.Max(0.001f, e));
+                    it.T.localPosition = it.Pos;
+                    break;
+                }
+                case 1: // parede sobe do chão
+                    it.T.localPosition = it.Pos + Vector3.down * ((kit != null ? kit.wallHeight : 3f) + 0.2f) * (1f - EaseOutBack(k));
+                    break;
+                case 2: // móvel cai com quique
+                    it.T.localPosition = it.Pos + Vector3.up * 3.2f * (1f - EaseOutBounce(k));
+                    it.T.localScale = k <= 0f ? Vector3.zero : it.Scale * Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(k * 2.5f));
+                    break;
+                case 3: // lâmpada desce do forro
+                    it.T.localPosition = it.Pos + Vector3.up * 1.4f * (1f - EaseOutBack(k));
+                    it.T.localScale = k <= 0f ? Vector3.zero : it.Scale;
+                    break;
+            }
+        }
+
+        private static float EaseOutBack(float k)
+        {
+            const float c1 = 1.70158f, c3 = c1 + 1f;
+            k = Mathf.Clamp01(k);
+            return 1f + c3 * Mathf.Pow(k - 1f, 3f) + c1 * Mathf.Pow(k - 1f, 2f);
+        }
+
+        private static float EaseOutBounce(float k)
+        {
+            k = Mathf.Clamp01(k);
+            const float n1 = 7.5625f, d1 = 2.75f;
+            if (k < 1f / d1) return n1 * k * k;
+            if (k < 2f / d1) { k -= 1.5f / d1; return n1 * k * k + 0.75f; }
+            if (k < 2.5f / d1) { k -= 2.25f / d1; return n1 * k * k + 0.9375f; }
+            k -= 2.625f / d1;
+            return n1 * k * k + 0.984375f;
+        }
+
         // ================================================================== Espaços
 
-        private void BuildSpace(int i)
+        /// <summary>Monta o espaço DESLIGADO (o Awake do RoomAnchor só pode rodar depois de configurado). Quem chama liga.</summary>
+        private RoomAnchor BuildSpace(int i)
         {
             var s = Layout.Spaces[i];
             Vector3 center = Map.SpaceCenter(i);
@@ -188,6 +502,7 @@ namespace HorrorTycoon.Rooms.Building
             string label = s.Def != null ? s.Def.DisplayName : s.Kind.ToString();
 
             var go = new GameObject($"Espaco_{i:00} ({label})");
+            go.SetActive(false);
             go.transform.SetParent(root, false);
             go.transform.localPosition = center;
 
@@ -212,7 +527,8 @@ namespace HorrorTycoon.Rooms.Building
             interior.SetParent(go.transform, false);
             interior.localRotation = Quaternion.Euler(0f, yaw, 0f);
 
-            GameObject fog = s.Kind == SpaceKind.Room ? BuildMist(go.transform, size) : null;
+            // Casa por escolha: a sala nasce quando alguém entra nela, então não tem névoa.
+            GameObject fog = s.Kind == SpaceKind.Room && !Layout.GrowsByDraft ? BuildMist(go.transform, size) : null;
 
             var lampGo = new GameObject("Lampada");
             lampGo.transform.SetParent(go.transform, false);
@@ -236,6 +552,7 @@ namespace HorrorTycoon.Rooms.Building
             int index = i;
             anchor.InteriorOverride = (a, parent, seed) => BuildInterior(index, parent, seed);
             anchors.Add(anchor);
+            return anchor;
         }
 
         /// <summary>
@@ -438,35 +755,108 @@ namespace HorrorTycoon.Rooms.Building
 
         // ================================================================== Paredes
 
-        private void BuildWalls()
+        private static string WallKey(HouseWall w) =>
+            $"{w.A}|{w.B}|{w.From.x},{w.From.y}|{w.To.x},{w.To.y}|{w.ConnectionIndex}|{string.Join(",", w.SiteIndices)}";
+
+        /// <summary>Hash estável (string.GetHashCode muda entre execuções em algumas plataformas).</summary>
+        private static int StableHash(string text)
         {
-            for (int w = 0; w < Layout.Walls.Count; w++)
+            unchecked
             {
-                var wall = Layout.Walls[w];
-                float line = Map.WallLineWorld(wall);
-                float outSign = 0f;
-                if (wall.IsExterior)
-                {
-                    Vector2Int o = HouseWorldMap.WallOutward(Layout, wall.A, wall);
-                    outSign = wall.Horizontal ? o.y : o.x;
-                }
-
-                PieceInfo lintel = null;
-                foreach (var p in HouseWorldMap.Pieces(Layout, wall, kit.wallHeight, kit.doorHeight, kit.maxWallPiece))
-                {
-                    var info = CreatePiece(w, wall, line, p, outSign);
-                    if (info != null && info.Lintel) lintel = info;
-                }
-
-                if (HouseWorldMap.GapOf(Layout, wall, out float g0, out float g1, out ConnectionType type) && type == ConnectionType.Door)
-                {
-                    float center = Map.AlongWorld(wall.Horizontal, (g0 + g1) * 0.5f);
-                    DoorFrame(wall.Horizontal, line, center, g1 - g0, lintel);
-                }
+                int h = (int)2166136261;
+                foreach (char ch in text) h = (h ^ ch) * 16777619;
+                return h;
             }
         }
 
-        private PieceInfo CreatePiece(int wallIndex, HouseWall wall, float line, WallPiece p, float outSign)
+        /// <summary>
+        /// Deixa os grupos de parede iguais a layout.Walls: trechos que não mudaram ficam, os que sumiram são destruídos,
+        /// os novos são montados. Devolve os novos.
+        /// </summary>
+        private List<WallGroup> SyncWalls()
+        {
+            var fresh = new List<WallGroup>();
+            var keep = new HashSet<string>();
+            foreach (var wall in Layout.Walls)
+            {
+                string key = WallKey(wall);
+                keep.Add(key);
+                if (wallGroups.TryGetValue(key, out var existing))
+                {
+                    existing.Wall = wall;
+                    foreach (var p in existing.Pieces) p.Wall = wall;
+                    continue;
+                }
+                var g = CreateWallGroup(wall, key);
+                wallGroups[key] = g;
+                fresh.Add(g);
+            }
+
+            var gone = new List<string>();
+            foreach (var pair in wallGroups) if (!keep.Contains(pair.Key)) gone.Add(pair.Key);
+            foreach (var key in gone)
+            {
+                var g = wallGroups[key];
+                if (g.Root != null)
+                {
+                    g.Root.gameObject.SetActive(false);
+                    Destroy(g.Root.gameObject);
+                }
+                wallGroups.Remove(key);
+            }
+
+            pieces.Clear();
+            foreach (var g in wallGroups.Values) pieces.AddRange(g.Pieces);
+            return fresh;
+        }
+
+        private WallGroup CreateWallGroup(HouseWall wall, string key)
+        {
+            var g = new WallGroup { Wall = wall };
+            g.Root = new GameObject($"Parede_{wall.A}_{(wall.IsExterior ? "fora" : wall.B.ToString())}").transform;
+            g.Root.SetParent(wallsRoot, false);
+
+            float line = Map.WallLineWorld(wall);
+            float outSign = 0f;
+            if (wall.IsExterior)
+            {
+                Vector2Int o = HouseWorldMap.WallOutward(Layout, wall.A, wall);
+                outSign = wall.Horizontal ? o.y : o.x;
+            }
+
+            foreach (var p in HouseWorldMap.Pieces(Layout, wall, kit.wallHeight, kit.doorHeight, kit.maxWallPiece))
+            {
+                CreatePiece(g, wall, line, p, outSign);
+            }
+
+            foreach (var gap in HouseWorldMap.Gaps(Layout, wall))
+            {
+                if (gap.Type != ConnectionType.Door) continue;
+                float center = Map.AlongWorld(wall.Horizontal, (gap.From + gap.To) * 0.5f);
+                PieceInfo lintel = null;
+                foreach (var p in g.Pieces)
+                {
+                    if (p.Lintel && center >= p.From - 0.01f && center <= p.To + 0.01f) lintel = p;
+                }
+                DoorFrame(g.Root, wall.Horizontal, line, center, gap.To - gap.From, lintel);
+                if (gap.Site >= 0) DoorLeaf(g.Root, wall.Horizontal, line, center, gap.To - gap.From, outSign, gap.Site);
+            }
+
+            // Janela: paredes externas sólidas (≥ 2 m) de Salas e Convivências, sorteio estável por trecho.
+            var rng = new System.Random(Layout.Seed ^ StableHash(key) ^ 0x51D0);
+            if (wall.IsExterior && wall.ConnectionIndex < 0 && wall.SiteIndex < 0 && wall.Length >= 2
+                && Layout.Spaces[wall.A].Kind != SpaceKind.Corridor && rng.NextDouble() < kit.windowChance)
+            {
+                float a0 = wall.Horizontal ? wall.From.x : wall.From.y;
+                float a1 = wall.Horizontal ? wall.To.x : wall.To.y;
+                Window(g, wall.A, wall.Horizontal, line, Map.AlongWorld(wall.Horizontal, (a0 + a1) * 0.5f), outSign, rng);
+            }
+
+            if (kit.eaves && wall.IsExterior) BuildEaves(g, rng);
+            return g;
+        }
+
+        private PieceInfo CreatePiece(WallGroup g, HouseWall wall, float line, WallPiece p, float outSign)
         {
             bool alongX = wall.Horizontal;
             float from = Map.AlongWorld(alongX, p.From), to = Map.AlongWorld(alongX, p.To);
@@ -481,7 +871,7 @@ namespace HorrorTycoon.Rooms.Building
             Material mat = p.Lintel ? (kit.lintelMaterial != null ? kit.lintelMaterial : wallMat)
                          : wall.IsExterior && kit.exteriorWallMaterial != null ? kit.exteriorWallMaterial : wallMat;
 
-            var go = Primitive(PrimitiveType.Cube, wallsRoot, p.Lintel ? "Verga" : "Parede",
+            var go = Primitive(PrimitiveType.Cube, g.Root, p.Lintel ? "Verga" : "Parede",
                 alongX ? new Vector3(mid, p.Bottom + p.Height * 0.5f, line) : new Vector3(line, p.Bottom + p.Height * 0.5f, mid),
                 alongX ? new Vector3(length + extra, p.Height, thickness) : new Vector3(thickness, p.Height, length + extra),
                 mat, !p.Lintel); // verga sem colisor: não atrapalha o NavMesh
@@ -493,20 +883,20 @@ namespace HorrorTycoon.Rooms.Building
 
             var info = new PieceInfo
             {
-                Cut = cut, Wall = wallIndex, AlongX = alongX, Line = line, From = from, To = to,
+                Cut = cut, Wall = wall, AlongX = alongX, Line = line, From = from, To = to,
                 Lintel = p.Lintel, Exterior = wall.IsExterior, OutSign = outSign,
             };
-            pieces.Add(info);
+            g.Pieces.Add(info);
             return info;
         }
 
         /// <summary>Batente: prefab do kit (preso à verga) ou dois montantes + travessa (cortam junto com a parede).</summary>
-        private void DoorFrame(bool alongX, float line, float center, float doorWidth, PieceInfo lintel)
+        private void DoorFrame(Transform parent, bool alongX, float line, float center, float doorWidth, PieceInfo lintel)
         {
             float doorH = kit.doorHeight;
             if (kit.doorFramePrefab != null)
             {
-                var inst = Instantiate(kit.doorFramePrefab, decorRoot, false);
+                var inst = Instantiate(kit.doorFramePrefab, parent, false);
                 inst.transform.SetPositionAndRotation(alongX ? new Vector3(center, 0f, line) : new Vector3(line, 0f, center),
                     Quaternion.Euler(0f, alongX ? 0f : 90f, 0f));
                 Vector3 s = inst.transform.localScale;
@@ -520,18 +910,49 @@ namespace HorrorTycoon.Rooms.Building
             for (int side = -1; side <= 1; side += 2)
             {
                 float along = center + side * (doorWidth * 0.5f + jamb * 0.5f - 0.02f);
-                var j = Primitive(PrimitiveType.Cube, wallsRoot, "Batente",
+                var j = Primitive(PrimitiveType.Cube, parent, "Batente",
                     alongX ? new Vector3(along, doorH * 0.5f, line) : new Vector3(line, doorH * 0.5f, along),
                     alongX ? new Vector3(jamb, doorH, depth) : new Vector3(depth, doorH, jamb), mat, false);
                 j.GetComponent<Renderer>().renderingLayerMask = AllLayers;
                 j.AddComponent<WallCutaway>().Setup(alongX ? Vector3.forward : Vector3.right, doorH, 0f, false);
             }
             float w = doorWidth + jamb * 2f - 0.04f;
-            var head = Primitive(PrimitiveType.Cube, wallsRoot, "Batente_Topo",
+            var head = Primitive(PrimitiveType.Cube, parent, "Batente_Topo",
                 alongX ? new Vector3(center, doorH + 0.06f, line) : new Vector3(line, doorH + 0.06f, center),
                 alongX ? new Vector3(w, 0.12f, depth) : new Vector3(depth, 0.12f, w), mat, false);
             head.GetComponent<Renderer>().renderingLayerMask = AllLayers;
             head.AddComponent<WallCutaway>().Setup(alongX ? Vector3.forward : Vector3.right, 0.12f, doorH, true);
+        }
+
+        /// <summary>
+        /// Porta para o vazio: folha FECHADA no vão (com colisor: o NavMesh não passa e o clique acha a porta) e duas fitas
+        /// em X do lado de fora ("o set ainda não foi montado").
+        /// </summary>
+        private void DoorLeaf(Transform parent, bool alongX, float line, float center, float doorWidth, float outSign, int site)
+        {
+            float h = kit.doorHeight - 0.02f;
+            var leaf = Primitive(PrimitiveType.Cube, parent, "Porta_Fechada",
+                alongX ? new Vector3(center, h * 0.5f, line) : new Vector3(line, h * 0.5f, center),
+                alongX ? new Vector3(doorWidth - 0.04f, h, 0.06f) : new Vector3(0.06f, h, doorWidth - 0.04f),
+                Mat(kit.trimMaterial, DarkWood), true);
+            leaf.GetComponent<Renderer>().renderingLayerMask = AllLayers;
+            leaf.AddComponent<DraftSiteMarker>().Setup(site);
+
+            var tapeMat = FxMat(null, SiteTape);
+            if (tapeMat == null) return;
+            float off = outSign * 0.05f;
+            float len = Mathf.Sqrt(doorWidth * doorWidth + h * h) * 0.8f;
+            float angle = Mathf.Atan2(h, doorWidth) * Mathf.Rad2Deg;
+            for (int k = -1; k <= 1; k += 2)
+            {
+                var q = Primitive(PrimitiveType.Quad, parent, "Fita_Porta",
+                    alongX ? new Vector3(center, h * 0.5f, line + off) : new Vector3(line + off, h * 0.5f, center),
+                    new Vector3(len, 0.09f, 1f), tapeMat, false);
+                // Quad olha para -Z local: vira para fora da casa e inclina em X.
+                float yaw = alongX ? (outSign > 0f ? 180f : 0f) : (outSign > 0f ? 270f : 90f);
+                q.transform.localRotation = Quaternion.Euler(0f, yaw, k * angle);
+                NoShadow(q);
+            }
         }
 
         private PieceInfo FindPiece(bool alongX, float line, float along, bool lintel)
@@ -547,37 +968,23 @@ namespace HorrorTycoon.Rooms.Building
 
         // ================================================================== Fachada
 
-        /// <summary>Janelas nas paredes externas sólidas (≥ 2 m) de Salas e Convivências, sorteadas pela seed da casa.</summary>
-        private void BuildWindows()
-        {
-            var rng = new System.Random(Layout.Seed ^ 0x51D0);
-            foreach (var wall in Layout.Walls)
-            {
-                if (!wall.IsExterior || wall.ConnectionIndex >= 0 || wall.Length < 2) continue;
-                var s = Layout.Spaces[wall.A];
-                if (s.Kind == SpaceKind.Corridor) continue;
-                if (rng.NextDouble() >= kit.windowChance) continue;
-
-                float a0 = wall.Horizontal ? wall.From.x : wall.From.y;
-                float a1 = wall.Horizontal ? wall.To.x : wall.To.y;
-                Vector2Int o = HouseWorldMap.WallOutward(Layout, wall.A, wall);
-                Window(wall.A, wall.Horizontal, Map.WallLineWorld(wall), Map.AlongWorld(wall.Horizontal, (a0 + a1) * 0.5f),
-                    wall.Horizontal ? o.y : o.x, rng);
-            }
-        }
-
         /// <summary>Janela: moldura + travessas + vidro (o vidro acende com o cômodo) + raio de luz para o quintal.</summary>
-        private void Window(int space, bool alongX, float line, float along, float outward, System.Random rng)
+        private void Window(WallGroup g, int space, bool alongX, float line, float along, float outward, System.Random rng)
         {
-            var seg = FindPiece(alongX, line, along, false);
+            PieceInfo seg = null;
+            foreach (var p in g.Pieces)
+            {
+                if (!p.Lintel && along >= p.From - 0.01f && along <= p.To + 0.01f) { seg = p; break; }
+            }
             const float w = 0.9f, h = 1.05f, cy = 1.5f;
-            if (!windowsBySpace.TryGetValue(space, out var panes)) windowsBySpace[space] = panes = new List<Renderer>();
+            g.WindowSpace = space;
+            var panes = g.Windows;
             Vector3 pos = alongX ? new Vector3(along, cy, line) : new Vector3(line, cy, along);
 
             if (kit.windowPrefab != null)
             {
                 float yaw = alongX ? (outward > 0f ? 0f : 180f) : (outward > 0f ? 90f : 270f);
-                var inst = Instantiate(kit.windowPrefab, decorRoot, false);
+                var inst = Instantiate(kit.windowPrefab, g.Root, false);
                 inst.name = $"Janela_{space:00}";
                 inst.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
                 foreach (var r in inst.GetComponentsInChildren<Renderer>(true))
@@ -594,7 +1001,7 @@ namespace HorrorTycoon.Rooms.Building
             var paneMat = Emissive(kit.windowPaneMaterial, new Color(0.118f, 0.165f, 0.267f), new Color(0.02f, 0.025f, 0.05f));
 
             var win = new GameObject($"Janela_{space:00}");
-            win.transform.SetParent(decorRoot, false);
+            win.transform.SetParent(g.Root, false);
             win.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, alongX ? 0f : 90f, 0f) * Quaternion.Euler(0f, 0f, tilt));
 
             panes.Add(WindowPart(win.transform, "Vidro", Vector3.zero, new Vector3(w - 0.08f, h - 0.08f, 0.14f), paneMat));
@@ -615,8 +1022,7 @@ namespace HorrorTycoon.Rooms.Building
                 beam.transform.localRotation = Quaternion.FromToRotation(Vector3.up, -dirOut);
                 var beamR = NoShadow(beam);
                 beamR.receiveShadows = false;
-                if (!glowsBySpace.TryGetValue(space, out var glows)) glowsBySpace[space] = glows = new List<Renderer>();
-                glows.Add(beamR);
+                g.Beams.Add(beamR);
             }
             seg?.Cut.AddAttachment(win);
         }
@@ -629,12 +1035,11 @@ namespace HorrorTycoon.Rooms.Building
             return r;
         }
 
-        /// <summary>Beiral grosso no topo de cada trecho externo (dica de telhado); some com o corte.</summary>
-        private void BuildEaves()
+        /// <summary>Beiral grosso no topo de cada pedaço externo do trecho (dica de telhado); some com o corte.</summary>
+        private void BuildEaves(WallGroup g, System.Random rng)
         {
             var mat = Mat(kit.eaveMaterial, Shingle);
-            var rng = new System.Random(77);
-            foreach (var p in pieces.ToArray())
+            foreach (var p in g.Pieces)
             {
                 if (!p.Exterior) continue;
                 float len = p.To - p.From + (p.Lintel ? 0f : 0.76f);
@@ -643,7 +1048,8 @@ namespace HorrorTycoon.Rooms.Building
                 Vector3 pos = p.AlongX ? new Vector3(mid, y, p.Line + p.OutSign * 0.14f) : new Vector3(p.Line + p.OutSign * 0.14f, y, mid);
                 Vector3 size = p.AlongX ? new Vector3(len, 0.16f, 0.46f) : new Vector3(0.46f, 0.16f, len);
                 float wobble = (float)(rng.NextDouble() * 2.0 - 1.0) * 1.2f;
-                var eave = Decor("Beiral", size, 0.04f, 0f, pos, p.AlongX ? new Vector3(0f, 0f, wobble) : new Vector3(wobble, 0f, 0f), mat);
+                var eave = Place(g.Root, "Beiral", size, 0.04f, 0f, pos, p.AlongX ? new Vector3(0f, 0f, wobble) : new Vector3(wobble, 0f, 0f), mat);
+                eave.GetComponent<Renderer>().renderingLayerMask = AllLayers;
                 p.Cut.AddAttachment(eave);
             }
         }
@@ -657,7 +1063,7 @@ namespace HorrorTycoon.Rooms.Building
             PieceInfo frontLintel = null;
             foreach (var p in pieces)
             {
-                if (p.Lintel && p.Wall >= 0 && Layout.Walls[p.Wall].ConnectionIndex == Layout.FrontDoorIndex) frontLintel = p;
+                if (p.Lintel && p.Wall != null && p.Wall.ConnectionIndex == Layout.FrontDoorIndex) frontLintel = p;
             }
 
             if (kit.porch)

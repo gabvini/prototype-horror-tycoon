@@ -9,6 +9,7 @@ namespace HorrorTycoon.Run
     /// Formato das ações (RunLog.actions):
     ///   move &lt;ator&gt; &lt;espaço&gt; · direct &lt;ator&gt; &lt;cena&gt; · tool &lt;ator&gt; · hold · holddoor &lt;ator&gt;
     ///   end-act · villain &lt;vilão&gt; · artefato &lt;artefato | -&gt;
+    ///   draft-offer &lt;porta&gt; · draft &lt;porta&gt; &lt;opção&gt; &lt;ator&gt; (casa por escolha)
     /// Nomes podem ter espaço ("Final Girl"): o ator é achado pelo maior prefixo que bate.
     /// </summary>
     public static class RunReplay
@@ -49,6 +50,15 @@ namespace HorrorTycoon.Run
                     case "holddoor":
                         run.HoldDoor(FindActor(run, rest));
                         break;
+                    case "draft-offer":
+                        run.OpenDraft(int.Parse(rest));
+                        break;
+                    case "draft":
+                    {
+                        var parts = rest.Split(new[] { ' ' }, 3);
+                        run.Draft(FindActor(run, parts[2]), int.Parse(parts[0]), int.Parse(parts[1]));
+                        break;
+                    }
                     case "end-act":
                         run.EndActEarly();
                         break;

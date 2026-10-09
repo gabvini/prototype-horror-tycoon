@@ -23,6 +23,8 @@ namespace HorrorTycoon.Cameras
     ///   Track      - monitor aberto e um ator encenando: o "observador" acompanha de longe.
     ///   DoorFocus  - card de sala aberto: com monitor, plano de lente na porta;
     ///                sem monitor, a visão da casa desliza até a porta.
+    ///   Build      - casa por escolha: uma sala nova está se montando. Plano de grua alto e aberto, girando devagar
+    ///                em volta da sala (com monitor); sem monitor, a visão da casa desliza até ela.
     /// O close de reação (ActorFocusController, prioridade 20) passa por cima de todos.
     ///
     /// Zoom de lente: a câmera fica longe e o FOV é calculado para "caber" uma altura de quadro
@@ -31,7 +33,7 @@ namespace HorrorTycoon.Cameras
     /// </summary>
     public class CinematicDirector : MonoBehaviour
     {
-        public enum Mode { Cinematic, Track, Overview, DoorFocus }
+        public enum Mode { Cinematic, Track, Overview, DoorFocus, Build }
 
         [Header("Referências")]
         [SerializeField] private RunPresenter presenter;
@@ -81,6 +83,8 @@ namespace HorrorTycoon.Cameras
         private bool preferSelected;
         private int doorRoom = -1;
         private int lastCardRoom = -1;
+        private int doorSite = -1;
+        private int lastCardSite = -1;
         private float cardOpenedAt;
         private bool lastMonitorOpen;
 
@@ -106,7 +110,8 @@ namespace HorrorTycoon.Cameras
         private bool MonitorOpen => monitor != null && monitor.IsOpen;
 
         /// <summary>Planos de "filme" (a HUD põe as faixas pretas e esconde os nomes no mapa).</summary>
-        public bool IsFilmMode => mode == Mode.Cinematic || mode == Mode.Track || (focusController != null && focusController.CurrentActor != null);
+        public bool IsFilmMode => mode == Mode.Cinematic || mode == Mode.Track || mode == Mode.Build
+                                  || (focusController != null && focusController.CurrentActor != null);
 
         /// <summary>Mostrar nomes das salas e atores sobre a imagem principal?</summary>
         public bool ShowWorldLabels => mode == Mode.Overview && (focusController == null || focusController.CurrentActor == null);
@@ -122,7 +127,7 @@ namespace HorrorTycoon.Cameras
             if (presenter == null || presenter.Run == null) return;
 
             Mode wanted = DecideMode();
-            bool cardChanged = wanted == Mode.DoorFocus && presenter.CardRoom != doorRoom;
+            bool cardChanged = wanted == Mode.DoorFocus && (presenter.CardRoom != doorRoom || presenter.CardSite != doorSite);
             bool monitorChanged = MonitorOpen != lastMonitorOpen;
             lastMonitorOpen = MonitorOpen;
 
@@ -140,6 +145,10 @@ namespace HorrorTycoon.Cameras
                     else CameraFocus.Set(rig != null ? rig.transform.position : Center, 0.6f);
                     break;
                 case Mode.Track: UpdateTrack(); break;
+                case Mode.Build:
+                    if (MonitorOpen) UpdateShot(cineCamera, false);
+                    else CameraFocus.Set(rig != null ? rig.transform.position : Center, 0.6f);
+                    break;
                 case Mode.Overview: CameraFocus.Set(rig != null ? rig.transform.position : Center, 0.6f); break;
             }
 
@@ -156,21 +165,24 @@ namespace HorrorTycoon.Cameras
         {
             var phase = presenter.CurrentPhase;
 
-            if (presenter.CardRoom != lastCardRoom)
+            if (presenter.CardRoom != lastCardRoom || presenter.CardSite != lastCardSite)
             {
                 lastCardRoom = presenter.CardRoom;
+                lastCardSite = presenter.CardSite;
                 cardOpenedAt = Time.unscaledTime;
             }
 
             float lastInput = rig != null ? rig.LastInputTime : -999f;
             bool recentInput = Time.unscaledTime - lastInput < returnToCinematicAfter;
 
+            if (presenter.AssemblyPoint.HasValue) return Mode.Build;
+
             if (phase == RunPresenter.Phase.Busy && presenter.Selected != null)
             {
                 return MonitorOpen ? Mode.Track : Mode.Overview;
             }
 
-            if (phase == RunPresenter.Phase.Idle && presenter.CardRoom >= 0)
+            if (phase == RunPresenter.Phase.Idle && presenter.HasCard)
             {
                 // Abriu o card e depois mexeu na câmera: o jogador quer olhar a casa.
                 if (recentInput && lastInput > cardOpenedAt) return Mode.Overview;
@@ -187,9 +199,11 @@ namespace HorrorTycoon.Cameras
             mode = next;
             bool doorWithMonitor = next == Mode.DoorFocus && MonitorOpen;
 
-            if (cineCamera != null) cineCamera.Priority = (next == Mode.Cinematic || next == Mode.Track) ? activePriority : 0;
+            bool buildWithMonitor = next == Mode.Build && MonitorOpen;
+            if (cineCamera != null) cineCamera.Priority = (next == Mode.Cinematic || next == Mode.Track || buildWithMonitor) ? activePriority : 0;
             if (doorCamera != null) doorCamera.Priority = doorWithMonitor ? doorPriority : 0;
             if (rig != null) rig.AutoDrift = next == Mode.Overview;
+            if (next == Mode.Build) BuildShot(buildWithMonitor);
 
             switch (next)
             {
@@ -206,13 +220,23 @@ namespace HorrorTycoon.Cameras
                     break;
                 case Mode.DoorFocus:
                     doorRoom = presenter.CardRoom;
+                    doorSite = presenter.CardSite;
+                    if (doorSite >= 0)
+                    {
+                        SiteShot(doorSite, doorWithMonitor);
+                        break;
+                    }
                     var anchor = presenter.AnchorOf(doorRoom);
                     if (anchor == null) break;
                     if (doorWithMonitor) DoorShot(anchor, presenter.Run.Rooms[doorRoom].IsHub);
                     else if (rig != null) rig.GlideTo(anchor.DoorPoint, doorGlideDistance);
                     break;
             }
-            if (next != Mode.DoorFocus) doorRoom = -1;
+            if (next != Mode.DoorFocus)
+            {
+                doorRoom = -1;
+                doorSite = -1;
+            }
         }
 
         // ================================================================== Planos de filme (monitor aberto)
@@ -301,6 +325,53 @@ namespace HorrorTycoon.Cameras
             SetLook(null, Vector3.zero, target);
             float frame = Mathf.Max(2.6f, spread * 2f + 1.6f);
             BeginShot(cineCamera, Random.Range(shotDuration.x, shotDuration.y), frame * 1.15f, frame, 0.6f, null);
+        }
+
+        /// <summary>
+        /// Sala nova se montando: grua alta (≈ 50°) olhando o centro da sala, quadro com a sala inteira e folga,
+        /// girando ~25° durante a montagem. Sem monitor: a visão da casa desliza até a sala.
+        /// </summary>
+        private void BuildShot(bool withMonitor)
+        {
+            Vector3 center = presenter.AssemblyPoint ?? Center;
+            float size = Mathf.Max(4f, presenter.AssemblySize);
+            if (!withMonitor)
+            {
+                if (rig != null) rig.GlideTo(center, Mathf.Max(doorGlideDistance, size * 1.7f));
+                return;
+            }
+            // Do lado de fora da casa (do centro da casa para a sala), para a sala não ficar atrás das outras.
+            Vector3 dir = center - Center;
+            dir.y = 0f;
+            if (dir.sqrMagnitude < 0.01f) dir = Vector3.back;
+            dir.Normalize();
+            float dist = Mathf.Max(watchDistance.x, size * 2.2f);
+            Vector3 flat = Quaternion.Euler(0f, Random.Range(-30f, 30f), 0f) * dir;
+            camFrom = center + flat * (dist * 0.65f) + Vector3.up * (dist * 0.75f);
+            camTo = center + Quaternion.Euler(0f, Random.value < 0.5f ? 25f : -25f, 0f) * flat * (dist * 0.6f) + Vector3.up * (dist * 0.7f);
+            SetLook(null, Vector3.zero, center + Vector3.up * 0.6f);
+            BeginShot(cineCamera, 4f, size * 1.5f, size * 1.25f, 0.6f, center);
+        }
+
+        /// <summary>Card de porta para o vazio: a porta fechada e a fita no chão, vistas de fora da casa.</summary>
+        private void SiteShot(int site, bool withMonitor)
+        {
+            var builder = presenter.Builder;
+            var door = presenter.Run.DoorSite(site);
+            if (builder == null || builder.Map == null || door == null) return;
+            Vector3 mark = builder.SitePoint(site);
+            if (!withMonitor)
+            {
+                if (rig != null) rig.GlideTo(mark, doorGlideDistance);
+                return;
+            }
+            Vector3 doorPoint = builder.Map.ToWorld(door.Position);
+            Vector3 outward = new Vector3(door.Outward.x, 0f, door.Outward.y);
+            Vector3 look = (doorPoint + mark) * 0.5f + Vector3.up * 1f;
+            camFrom = PickVantage(look, outward);
+            camTo = camFrom + Drift() * 0.5f;
+            SetLook(null, Vector3.zero, look);
+            BeginShot(doorCamera, 6f, 5f, 4f, -0.3f, doorPoint);
         }
 
         /// <summary>Card aberto com monitor: plano de lente na porta da sala, visto do lado do corredor.</summary>

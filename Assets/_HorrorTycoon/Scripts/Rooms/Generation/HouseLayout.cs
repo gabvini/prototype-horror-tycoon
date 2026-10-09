@@ -71,9 +71,49 @@ namespace HorrorTycoon.Rooms.Generation
         /// <summary>True = corre ao longo de X (From.y == To.y).</summary>
         public bool Horizontal { get; internal set; }
         public int ConnectionIndex { get; internal set; } = -1;
+        internal readonly List<int> siteIndices = new List<int>();
+        /// <summary>Casa por escolha: portas para o vazio (HouseDoorSite ainda abertas) neste trecho externo, em ordem ao longo dele.</summary>
+        public IReadOnlyList<int> SiteIndices => siteIndices;
+        /// <summary>Primeira porta para o vazio do trecho (-1 = nenhuma).</summary>
+        public int SiteIndex => siteIndices.Count > 0 ? siteIndices[0] : -1;
 
         public bool IsExterior => B == HouseLayout.Outside;
         public int Length => Horizontal ? To.x - From.x : To.y - From.y;
+    }
+
+    /// <summary>Estado de uma porta para o vazio (casa por escolha).</summary>
+    public enum DoorSiteState
+    {
+        /// <summary>Porta fechada: do outro lado ainda não há nada. Abrir = escolher 1 de 3 salas.</summary>
+        Open,
+        /// <summary>Já leva a uma sala montada (Space).</summary>
+        Built,
+        /// <summary>Uma sala montada ocupou o lado de fora sem encaixar na porta: virou parede.</summary>
+        Blocked
+    }
+
+    /// <summary>
+    /// CASA POR ESCOLHA: porta numa parede EXTERNA de um corredor/convivência que dá para o vazio.
+    /// Ao abrir, o jogador escolhe a sala que nasce ali (HouseDraft). Coordenadas como HouseConnection.
+    /// </summary>
+    public sealed class HouseDoorSite
+    {
+        public int Index { get; internal set; }
+        /// <summary>Espaço que tem a porta (corredor ou convivência).</summary>
+        public int Host { get; internal set; }
+        /// <summary>Centro do vão, sobre a linha da parede do host.</summary>
+        public Vector2 Position { get; internal set; }
+        public bool HorizontalWall { get; internal set; }
+        public float Width { get; internal set; }
+        /// <summary>Direção (grade) que sai do host pela porta: (±1,0) ou (0,±1).</summary>
+        public Vector2Int Outward { get; internal set; }
+        /// <summary>Zona do terreno (frente/meio/fundos) onde a porta fica: filtra as salas oferecidas.</summary>
+        public HouseZone Zone { get; internal set; }
+        public DoorSiteState State { get; internal set; } = DoorSiteState.Open;
+        /// <summary>Sala montada do outro lado (-1 = nenhuma).</summary>
+        public int Space { get; internal set; } = -1;
+
+        public bool IsOpen => State == DoorSiteState.Open;
     }
 
     /// <summary>
@@ -86,8 +126,13 @@ namespace HorrorTycoon.Rooms.Generation
         internal readonly List<HouseSpace> spaces = new List<HouseSpace>();
         internal readonly List<HouseConnection> connections = new List<HouseConnection>();
         internal readonly List<HouseWall> walls = new List<HouseWall>();
+        internal readonly List<HouseDoorSite> sites = new List<HouseDoorSite>();
 
         public IReadOnlyList<HouseSpace> Spaces => spaces;
+        /// <summary>Casa por escolha: portas para o vazio (vazio na casa gerada inteira).</summary>
+        public IReadOnlyList<HouseDoorSite> Sites => sites;
+        /// <summary>True = casa por escolha (cresce a cada sala escolhida).</summary>
+        public bool GrowsByDraft { get; internal set; }
         public IReadOnlyList<HouseConnection> Connections => connections;
         public IReadOnlyList<HouseWall> Walls => walls;
 
@@ -148,6 +193,123 @@ namespace HorrorTycoon.Rooms.Generation
                 return true;
             }
             return false;
+        }
+
+        // ================================================================== Paredes
+
+        /// <summary>Índice do espaço em cada célula de 1 m (-1 = vazio).</summary>
+        internal int[,] Grid()
+        {
+            int w = Mathf.Max(1, Bounds.x), h = Mathf.Max(1, Bounds.y);
+            var grid = new int[w, h];
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                    grid[x, y] = -1;
+            foreach (var s in spaces)
+            {
+                RectInt r = s.Rect;
+                for (int x = Mathf.Max(0, r.xMin); x < Mathf.Min(w, r.xMax); x++)
+                    for (int y = Mathf.Max(0, r.yMin); y < Mathf.Min(h, r.yMax); y++)
+                        grid[x, y] = s.Index;
+            }
+            return grid;
+        }
+
+        /// <summary>Retângulo dentro do terreno e sem nenhum espaço.</summary>
+        public bool IsFree(RectInt rect)
+        {
+            if (rect.xMin < 0 || rect.yMin < 0 || rect.xMax > Bounds.x || rect.yMax > Bounds.y) return false;
+            foreach (var s in spaces) if (s.Rect.Overlaps(rect)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Recalcula as paredes: percorre as bordas de cada espaço metro a metro e junta trechos com o mesmo vizinho.
+        /// Parede compartilhada sai uma vez (A &lt; B); parede externa sai com B = Outside.
+        /// Casa por escolha: trechos externos com porta para o vazio ganham SiteIndices.
+        /// </summary>
+        internal void ComputeWalls()
+        {
+            walls.Clear();
+            var grid = Grid();
+            foreach (var s in spaces)
+            {
+                RectInt r = s.Rect;
+                EdgeWalls(grid, s.Index, true, r.yMin, r.xMin, r.xMax, 0, -1);  // sul
+                EdgeWalls(grid, s.Index, true, r.yMax, r.xMin, r.xMax, 0, 0);   // norte
+                EdgeWalls(grid, s.Index, false, r.xMin, r.yMin, r.yMax, -1, 0); // oeste
+                EdgeWalls(grid, s.Index, false, r.xMax, r.yMin, r.yMax, 0, 0);  // leste
+            }
+        }
+
+        private void EdgeWalls(int[,] grid, int space, bool horizontal, int line, int from, int to, int offX, int offY)
+        {
+            int runStart = from;
+            int runNeighbor = NeighborAt(grid, horizontal, line, from, offX, offY);
+            for (int t = from + 1; t <= to; t++)
+            {
+                int nb = t < to ? NeighborAt(grid, horizontal, line, t, offX, offY) : int.MinValue;
+                if (nb == runNeighbor) continue;
+                EmitWall(space, runNeighbor, horizontal, line, runStart, t);
+                runStart = t;
+                runNeighbor = nb;
+            }
+        }
+
+        private int NeighborAt(int[,] grid, bool horizontal, int line, int t, int offX, int offY)
+        {
+            int x = horizontal ? t : line + offX;
+            int y = horizontal ? line + offY : t;
+            if (x < 0 || y < 0 || x >= grid.GetLength(0) || y >= grid.GetLength(1)) return Outside;
+            return grid[x, y];
+        }
+
+        private void EmitWall(int space, int neighbor, bool horizontal, int line, int a, int b)
+        {
+            if (neighbor != Outside && neighbor < space) return; // já emitida pelo outro lado
+
+            var wall = new HouseWall
+            {
+                A = space,
+                B = neighbor,
+                Horizontal = horizontal,
+                From = horizontal ? new Vector2Int(a, line) : new Vector2Int(line, a),
+                To = horizontal ? new Vector2Int(b, line) : new Vector2Int(line, b),
+            };
+
+            foreach (var c in connections)
+            {
+                bool samePair = (c.A == space && c.B == neighbor) || (c.B == space && c.A == neighbor);
+                if (!samePair || c.HorizontalWall != horizontal) continue;
+                float cLine = horizontal ? c.Position.y : c.Position.x;
+                float cAlong = horizontal ? c.Position.x : c.Position.y;
+                if (Mathf.Abs(cLine - line) < 0.001f && cAlong > a && cAlong < b)
+                {
+                    wall.ConnectionIndex = c.Index;
+                    break;
+                }
+            }
+
+            if (neighbor == Outside && wall.ConnectionIndex < 0)
+            {
+                foreach (var site in sites)
+                {
+                    if (!site.IsOpen || site.Host != space || site.HorizontalWall != horizontal) continue;
+                    float sLine = horizontal ? site.Position.y : site.Position.x;
+                    float sAlong = horizontal ? site.Position.x : site.Position.y;
+                    if (Mathf.Abs(sLine - line) < 0.001f && sAlong - site.Width * 0.5f >= a - 0.001f && sAlong + site.Width * 0.5f <= b + 0.001f)
+                    {
+                        wall.siteIndices.Add(site.Index);
+                    }
+                }
+                wall.siteIndices.Sort((x, y) =>
+                {
+                    var sx = sites[x].Position;
+                    var sy = sites[y].Position;
+                    return horizontal ? sx.x.CompareTo(sy.x) : sx.y.CompareTo(sy.y);
+                });
+            }
+            walls.Add(wall);
         }
 
         /// <summary>Confere as regras estruturais. Usado pelo gerador e pelos testes.</summary>

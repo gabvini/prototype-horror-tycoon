@@ -47,7 +47,8 @@ namespace HorrorTycoon.Rooms.Building
                 x1 = Mathf.Max(x1, s.Rect.xMax);
                 y1 = Mathf.Max(y1, s.Rect.yMax);
             }
-            if (x0 > x1) { x0 = y0 = 0; x1 = layout.Bounds.x; y1 = layout.Bounds.y; }
+            // Casa por escolha: a pegada cresce a cada sala, mas o mundo não pode andar. Vale o terreno inteiro.
+            if (x0 > x1 || layout.GrowsByDraft) { x0 = y0 = 0; x1 = layout.Bounds.x; y1 = layout.Bounds.y; }
             FootprintGrid = new RectInt(x0, y0, x1 - x0, y1 - y0);
             OriginX = centerFootprintX ? -(x0 + x1) * 0.5f : -layout.Bounds.x * 0.5f;
         }
@@ -157,25 +158,61 @@ namespace HorrorTycoon.Rooms.Building
 
         // ================================================================== Paredes
 
-        /// <summary>Vão da ligação neste trecho (ao longo do eixo). False = trecho sólido.</summary>
-        public static bool GapOf(HouseLayout layout, HouseWall wall, out float g0, out float g1, out ConnectionType type)
+        /// <summary>Um vão num trecho de parede (ao longo do eixo da parede, metros da planta).</summary>
+        public struct WallGap
         {
-            g0 = g1 = 0f;
-            type = ConnectionType.Door;
-            if (wall.ConnectionIndex < 0 || wall.ConnectionIndex >= layout.Connections.Count) return false;
-            var c = layout.Connections[wall.ConnectionIndex];
+            public float From, To;
+            public ConnectionType Type;
+            /// <summary>Porta para o vazio (casa por escolha) deste vão; -1 = ligação normal.</summary>
+            public int Site;
+        }
+
+        /// <summary>Vãos do trecho, em ordem: o da ligação (no máximo um) ou as portas para o vazio (casa por escolha).</summary>
+        public static List<WallGap> Gaps(HouseLayout layout, HouseWall wall)
+        {
+            var list = new List<WallGap>();
             float a0 = wall.Horizontal ? wall.From.x : wall.From.y;
             float a1 = wall.Horizontal ? wall.To.x : wall.To.y;
-            float along = wall.Horizontal ? c.Position.x : c.Position.y;
-            g0 = Mathf.Max(a0, along - c.Width * 0.5f);
-            g1 = Mathf.Min(a1, along + c.Width * 0.5f);
-            type = c.Type;
-            return g1 > g0;
+
+            void Add(Vector2 pos, float width, ConnectionType type, int site)
+            {
+                float along = wall.Horizontal ? pos.x : pos.y;
+                float g0 = Mathf.Max(a0, along - width * 0.5f), g1 = Mathf.Min(a1, along + width * 0.5f);
+                if (g1 > g0) list.Add(new WallGap { From = g0, To = g1, Type = type, Site = site });
+            }
+
+            if (wall.ConnectionIndex >= 0 && wall.ConnectionIndex < layout.Connections.Count)
+            {
+                var c = layout.Connections[wall.ConnectionIndex];
+                Add(c.Position, c.Width, c.Type, -1);
+            }
+            foreach (int si in wall.SiteIndices)
+            {
+                if (si < 0 || si >= layout.Sites.Count) continue;
+                var site = layout.Sites[si];
+                // Porta para o vazio: vão de porta, fechado por uma folha no HouseBuilder.
+                Add(site.Position, site.Width, ConnectionType.Door, si);
+            }
+            list.Sort((x, y) => x.From.CompareTo(y.From));
+            return list;
+        }
+
+        /// <summary>Primeiro vão do trecho (ao longo do eixo). False = trecho sólido.</summary>
+        public static bool GapOf(HouseLayout layout, HouseWall wall, out float g0, out float g1, out ConnectionType type)
+        {
+            var gaps = Gaps(layout, wall);
+            g0 = g1 = 0f;
+            type = ConnectionType.Door;
+            if (gaps.Count == 0) return false;
+            g0 = gaps[0].From;
+            g1 = gaps[0].To;
+            type = gaps[0].Type;
+            return true;
         }
 
         /// <summary>
-        /// Pedaços de parede de um trecho: sólidos dos lados do vão (divididos em pedaços de até 'maxPiece' m,
-        /// para o corte "Sims" funcionar por pedaço) e, se for PORTA, a verga acima do vão.
+        /// Pedaços de parede de um trecho: sólidos entre os vãos (divididos em pedaços de até 'maxPiece' m,
+        /// para o corte "Sims" funcionar por pedaço) e, em cada PORTA, a verga acima do vão.
         /// PASSAGEM (Opening) = vão de altura inteira, sem verga.
         /// </summary>
         public static List<WallPiece> Pieces(HouseLayout layout, HouseWall wall, float wallHeight, float doorHeight, float maxPiece)
@@ -184,19 +221,17 @@ namespace HorrorTycoon.Rooms.Building
             float a0 = wall.Horizontal ? wall.From.x : wall.From.y;
             float a1 = wall.Horizontal ? wall.To.x : wall.To.y;
 
-            if (GapOf(layout, wall, out float g0, out float g1, out ConnectionType type))
+            float cursor = a0;
+            foreach (var gap in Gaps(layout, wall))
             {
-                AddSolid(list, a0, g0, wallHeight, maxPiece);
-                if (type == ConnectionType.Door && wallHeight - doorHeight > 0.01f)
+                AddSolid(list, cursor, gap.From, wallHeight, maxPiece);
+                if (gap.Type == ConnectionType.Door && wallHeight - doorHeight > 0.01f)
                 {
-                    list.Add(new WallPiece { From = g0, To = g1, Bottom = doorHeight, Height = wallHeight - doorHeight, Lintel = true });
+                    list.Add(new WallPiece { From = gap.From, To = gap.To, Bottom = doorHeight, Height = wallHeight - doorHeight, Lintel = true });
                 }
-                AddSolid(list, g1, a1, wallHeight, maxPiece);
+                cursor = Mathf.Max(cursor, gap.To);
             }
-            else
-            {
-                AddSolid(list, a0, a1, wallHeight, maxPiece);
-            }
+            AddSolid(list, cursor, a1, wallHeight, maxPiece);
             return list;
         }
 

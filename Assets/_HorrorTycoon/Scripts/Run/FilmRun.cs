@@ -36,7 +36,8 @@ namespace HorrorTycoon.Run
     {
         public GameContentDef Content { get; }
         public GameRandom Rng { get; }
-        public HouseMap Map { get; }
+        /// <summary>Grafo da casa. Na casa por escolha é refeito a cada sala nova.</summary>
+        public HouseMap Map { get; private set; }
         /// <summary>Planta gerada (null na planta fixa). Contrato com a montagem 3D.</summary>
         public HouseLayout Layout { get; }
         public RunStatus Status { get; private set; } = RunStatus.Playing;
@@ -116,6 +117,12 @@ namespace HorrorTycoon.Run
                     .Where(r => r != null && r.Kind == SpaceKind.Room).Distinct().ToList();
                 // Fluxo próprio: gerar a casa não muda a sequência dos encontros da run.
                 Layout = HouseGenerator.Generate(houseGen, pool, new GameRandom(GameRandom.Mix(seed, LayoutSalt)));
+                if (houseGen.growByDraft)
+                {
+                    // Casa por escolha: fica só o esqueleto; as salas nascem nas portas para o vazio (FilmRun.Draft.cs).
+                    Layout = HouseDraft.Skeleton(Layout);
+                    InitDraft(houseGen, pool, seed);
+                }
 
                 foreach (var space in Layout.Spaces)
                 {
@@ -139,7 +146,8 @@ namespace HorrorTycoon.Run
             Log.seed = seed;
             Log.filmFormat = content.FilmFormat.DisplayName;
             Log.Add(0, "start", $"Filme '{content.FilmFormat.DisplayName}' — seed {seed}" +
-                (Layout != null ? $" | casa gerada: {Layout.CountOf(SpaceKind.Room)} salas, {Layout.Attempts} tentativa(s)" : ""));
+                (Layout != null ? $" | casa gerada: {Layout.CountOf(SpaceKind.Room)} salas, {Layout.Attempts} tentativa(s)" : "") +
+            (Layout != null && Layout.GrowsByDraft ? $" | casa por escolha: {Layout.Sites.Count} portas para o vazio" : ""));
         }
 
         /// <summary>Chamar uma vez depois de assinar os eventos.</summary>
@@ -278,7 +286,10 @@ namespace HorrorTycoon.Run
 
         // ================================================================== Ações
 
-        public MoveOutcome Move(ActorRunState actor, int roomIndex)
+        public MoveOutcome Move(ActorRunState actor, int roomIndex) => Move(actor, roomIndex, true);
+
+        /// <param name="logAction">false = a ação já foi registrada por quem chamou (ex.: "draft" abre a porta e entra).</param>
+        private MoveOutcome Move(ActorRunState actor, int roomIndex, bool logAction)
         {
             if (!CanMove(actor, roomIndex)) throw new InvalidOperationException("Movimento inválido.");
 
@@ -288,7 +299,7 @@ namespace HorrorTycoon.Run
 
             ActionsLeft -= cost;
             actor.RoomIndex = roomIndex;
-            Log.actions.Add($"move {actor.Def.DisplayName} {roomIndex}");
+            if (logAction) Log.actions.Add($"move {actor.Def.DisplayName} {roomIndex}");
 
             var room = rooms[roomIndex];
             room.Discovered = true;

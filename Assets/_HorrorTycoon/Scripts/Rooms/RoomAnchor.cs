@@ -120,6 +120,51 @@ namespace HorrorTycoon.Rooms
             lampGlows = glows ?? new Renderer[0];
         }
 
+        /// <summary>
+        /// Casa por escolha: janelas/brilhos novos depois do Awake (um trecho de parede deste espaço foi refeito quando
+        /// uma sala nasceu ao lado). Peças destruídas viram null nas listas e são ignoradas.
+        /// </summary>
+        public void AddVisuals(Renderer[] windows, Renderer[] glows)
+        {
+            if (windows != null && windows.Length > 0)
+            {
+                var w = new List<Renderer>(windowPanes);
+                w.AddRange(windows);
+                windowPanes = w.ToArray();
+                ApplyWindows();
+            }
+            if (glows != null && glows.Length > 0)
+            {
+                var g = new List<Renderer>(lampGlows);
+                g.AddRange(glows);
+                lampGlows = g.ToArray();
+                foreach (var r in glows) AddGlowBase(r);
+                bool on = ceilingLight == null || ceilingLight.enabled;
+                foreach (var r in glows) if (r != null) r.enabled = on;
+                ApplyGlow();
+            }
+        }
+
+        /// <summary>
+        /// Casa por escolha: apaga a lâmpada (sala se montando) e, ao religar, ela "pega no tranco" como na descoberta.
+        /// </summary>
+        public void SetLampPower(bool on)
+        {
+            if (revealRoutine != null)
+            {
+                StopCoroutine(revealRoutine);
+                revealRoutine = null;
+            }
+            if (!on || !Application.isPlaying || !isActiveAndEnabled)
+            {
+                if (ceilingLight != null) ceilingLight.enabled = on;
+                SetGlowVisible(on);
+                startupLevel = 1f;
+                return;
+            }
+            revealRoutine = StartCoroutine(Reveal());
+        }
+
         private void Awake()
         {
             if (ceilingLight != null) baseIntensity = ceilingLight.intensity;
@@ -128,24 +173,26 @@ namespace HorrorTycoon.Rooms
 
             glowBase.Clear();
             glowProperty.Clear();
-            foreach (var r in lampGlows)
+            foreach (var r in lampGlows) AddGlowBase(r);
+        }
+
+        private void AddGlowBase(Renderer r)
+        {
+            Material m = r != null ? r.sharedMaterial : null;
+            if (m != null && m.HasProperty(ToonMaterials.EmissionColorId) && ToonMaterials.IsToon(m))
             {
-                Material m = r != null ? r.sharedMaterial : null;
-                if (m != null && m.HasProperty(ToonMaterials.EmissionColorId) && ToonMaterials.IsToon(m))
-                {
-                    glowBase.Add(m.GetColor(ToonMaterials.EmissionColorId));
-                    glowProperty.Add(ToonMaterials.EmissionColorId);
-                }
-                else if (m != null && m.HasProperty(BaseColorId))
-                {
-                    glowBase.Add(m.GetColor(BaseColorId));
-                    glowProperty.Add(BaseColorId);
-                }
-                else
-                {
-                    glowBase.Add(Color.black);
-                    glowProperty.Add(-1);
-                }
+                glowBase.Add(m.GetColor(ToonMaterials.EmissionColorId));
+                glowProperty.Add(ToonMaterials.EmissionColorId);
+            }
+            else if (m != null && m.HasProperty(BaseColorId))
+            {
+                glowBase.Add(m.GetColor(BaseColorId));
+                glowProperty.Add(BaseColorId);
+            }
+            else
+            {
+                glowBase.Add(Color.black);
+                glowProperty.Add(-1);
             }
         }
 

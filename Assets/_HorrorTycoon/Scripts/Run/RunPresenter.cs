@@ -31,7 +31,8 @@ namespace HorrorTycoon.Run
             ActBreak,      // fim de ato
             VillainChoice, // escolher vilão
             Ended,
-            ArtefatoChoice // Protótipo 3: escolher 1 de 3 artefatos entre atos
+            ArtefatoChoice, // Protótipo 3: escolher 1 de 3 artefatos entre atos
+            DraftChoice     // Casa por escolha: escolher a sala que nasce atrás da porta aberta
         }
 
         [Header("Dados")]
@@ -70,6 +71,7 @@ namespace HorrorTycoon.Run
         private bool runEnded;
         private float resultTimer;
         private RoomAnchor hoveredAnchor;
+        private int runSeedUsed;
 
         // Vilão NPC: eventos da lógica guardados para encenar depois da ação, boneco e anúncio.
         private readonly List<object> villainEvents = new List<object>();
@@ -84,6 +86,20 @@ namespace HorrorTycoon.Run
 
         /// <summary>Sala cujo card está aberto (-1 = nenhum).</summary>
         public int CardRoom { get; private set; } = -1;
+        /// <summary>Casa por escolha: porta para o vazio cujo card está aberto (-1 = nenhuma).</summary>
+        public int CardSite { get; private set; } = -1;
+        /// <summary>Algum card (sala ou porta para o vazio) aberto.</summary>
+        public bool HasCard => CardRoom >= 0 || CardSite >= 0;
+        /// <summary>Porta para o vazio sob o mouse (-1 = nenhuma).</summary>
+        public int HoveredSite { get; private set; } = -1;
+        /// <summary>Escolha de sala aberta (fase DraftChoice): a oferta, a porta e quem vai abrir.</summary>
+        public DraftOffer CurrentDraft { get; private set; }
+        public ActorRunState DraftActor { get; private set; }
+        public HouseBuilder Builder => houseBuilder;
+        /// <summary>Casa por escolha: centro da sala que está se montando agora (a câmera faz o plano de grua). null = nenhuma.</summary>
+        public Vector3? AssemblyPoint { get; private set; }
+        /// <summary>Maior lado (m) da sala que está se montando.</summary>
+        public float AssemblySize { get; private set; }
         public ActOutcome LastAct { get; private set; }
         public string ResultTitle { get; private set; } = "";
         public List<string> ResultLines { get; } = new List<string>();
@@ -119,6 +135,7 @@ namespace HorrorTycoon.Run
             rig = FindFirstObjectByType<IsoCameraRig>();
 
             int runSeed = seed != 0 ? seed : System.Environment.TickCount;
+            runSeedUsed = runSeed;
             Run = houseGen != null ? new FilmRun(content, runSeed, houseGen) : new FilmRun(content, runSeed);
             Run.ActEnded += act => pendingAct = act;
             Run.RunEnded += _ => runEnded = true;
@@ -126,6 +143,7 @@ namespace HorrorTycoon.Run
             Run.VillainEncountered += e => villainEvents.Add(e);
             Run.GhostScared += e => villainEvents.Add(e);
             Run.CrisisHappened += e => villainEvents.Add(e);
+            Run.RoomAdded += OnRoomAdded;
 
             // Casa gerada: monta a casa ANTES de ligar os slots e de calcular o NavMesh.
             if (Run.Layout != null)
@@ -174,6 +192,7 @@ namespace HorrorTycoon.Run
             }
 
             Run.Begin();
+            RefreshSites();
             Debug.Log($"[HorrorTycoon] Run iniciada. Seed {runSeed} (coloque no RunPresenter para repetir).");
             RefreshExpressions();
         }
@@ -214,6 +233,16 @@ namespace HorrorTycoon.Run
             if (kb.escapeKey.wasPressedThisFrame) CloseRoomCard();
         }
 
+        /// <summary>Porta para o vazio atingida pelo raio: a folha fechada ou a marcação de fita no chão.</summary>
+        private int SiteFromHit(RaycastHit hit)
+        {
+            if (houseBuilder == null || !Run.GrowsByDraft) return -1;
+            var marker = hit.collider.GetComponentInParent<DraftSiteMarker>();
+            if (marker != null) return marker.SiteIndex;
+            if (hit.collider.GetComponentInParent<RoomAnchor>() != null) return -1;
+            return houseBuilder.SiteAt(hit.point);
+        }
+
         /// <summary>
         /// Raio do mouse para o mundo: pelo MONITOR DO DIRETOR se o mouse estiver sobre ele,
         /// senão pela câmera principal (desde que não esteja sobre outro painel da HUD).
@@ -244,6 +273,14 @@ namespace HorrorTycoon.Run
                 return;
             }
 
+            // Casa por escolha: porta para o vazio (folha fechada ou fita no chão) abre o card da porta.
+            int site = SiteFromHit(hit);
+            if (site >= 0 && Run.DoorSite(site) != null && Run.DoorSite(site).IsOpen)
+            {
+                OpenSiteCard(site);
+                return;
+            }
+
             // Clicar numa sala ABRE O CARD da sala (o jogador decide quem vai a partir dele).
             var anchor = hit.collider.GetComponentInParent<RoomAnchor>();
             if (anchor != null)
@@ -259,12 +296,21 @@ namespace HorrorTycoon.Run
         private void UpdateHover()
         {
             RoomAnchor newHover = null;
+            int newSite = -1;
             if (TryPointerRay(out Ray ray))
             {
                 if (SeeThroughTargets.Raycast(ray, out RaycastHit hit, 300f))
                 {
                     newHover = hit.collider.GetComponentInParent<RoomAnchor>();
+                    newSite = SiteFromHit(hit);
                 }
+            }
+
+            if (newSite != HoveredSite)
+            {
+                if (HoveredSite >= 0 && HoveredSite != CardSite) houseBuilder?.SetSiteHighlight(HoveredSite, false);
+                HoveredSite = newSite;
+                if (HoveredSite >= 0) houseBuilder?.SetSiteHighlight(HoveredSite, true);
             }
 
             if (newHover == hoveredAnchor) return;
@@ -287,12 +333,79 @@ namespace HorrorTycoon.Run
 
         public void OpenRoomCard(int roomIndex)
         {
+            SetCardSite(-1);
             CardRoom = roomIndex;
         }
 
         public void CloseRoomCard()
         {
             CardRoom = -1;
+            SetCardSite(-1);
+        }
+
+        /// <summary>Casa por escolha: abre o card da porta para o vazio ("Quem abre?").</summary>
+        public void OpenSiteCard(int site)
+        {
+            CardRoom = -1;
+            SetCardSite(site);
+        }
+
+        private void SetCardSite(int site)
+        {
+            if (CardSite == site) return;
+            if (CardSite >= 0 && CardSite != HoveredSite) houseBuilder?.SetSiteHighlight(CardSite, false);
+            CardSite = site;
+            if (CardSite >= 0) houseBuilder?.SetSiteHighlight(CardSite, true);
+        }
+
+        /// <summary>
+        /// Card da porta: o ator vai abrir. Sorteia (ou recupera) a oferta e abre a escolha de sala (fase DraftChoice).
+        /// </summary>
+        public void OpenDraft(ActorRunState actor, int site)
+        {
+            if (CurrentPhase != Phase.Idle || actor == null || !Run.CanDraft(actor, site)) return;
+            var offer = Run.OpenDraft(site);
+            if (offer == null || offer.Options.Count == 0) return;
+            Select(actor);
+            DraftActor = actor;
+            CurrentDraft = offer;
+            CurrentPhase = Phase.DraftChoice;
+        }
+
+        /// <summary>Escolha de sala: a opção 'option' nasce atrás da porta e o ator entra. -1 = desistir (volta ao card).</summary>
+        public void ChooseDraft(int option)
+        {
+            if (CurrentPhase != Phase.DraftChoice || CurrentDraft == null) return;
+            var actor = DraftActor;
+            int site = CurrentDraft.Site;
+            CurrentDraft = null;
+            DraftActor = null;
+            CurrentPhase = Phase.Idle;
+            if (option < 0 || actor == null || !Run.CanDraft(actor, site)) return;
+            CloseRoomCard();
+            StartCoroutine(DraftSequence(actor, site, option));
+        }
+
+        /// <summary>Fita apagada nas portas onde nenhuma sala cabe mais.</summary>
+        private void RefreshSites()
+        {
+            if (houseBuilder == null || !Run.GrowsByDraft) return;
+            for (int i = 0; i < Run.DoorSites.Count; i++)
+            {
+                if (Run.DoorSites[i].IsOpen) houseBuilder.SetSiteAvailable(i, Run.SiteHasRoom(i));
+            }
+        }
+
+        /// <summary>A lógica pôs uma sala nova na planta: monta na cena (a animação roda no DraftSequence).</summary>
+        private void OnRoomAdded(int index)
+        {
+            if (houseBuilder == null) return;
+            var anchor = houseBuilder.AddRoom(index);
+            if (anchor == null) return;
+            anchors[index] = anchor;
+            anchor.Bind(Run.Rooms[index], runSeedUsed);
+            anchor.SetDiscovered(true);
+            if (navMeshSurface != null) navMeshSurface.BuildNavMesh();
         }
 
         /// <summary>Botão "Ir" do card: manda o ator para a sala.</summary>
@@ -416,14 +529,38 @@ namespace HorrorTycoon.Run
 
         // ================================================================== Encenação
 
-        private IEnumerator MoveSequence(ActorRunState actor, int roomIndex)
+        /// <summary>
+        /// Casa por escolha: o ator abre a porta, a sala escolhida nasce (OnRoomAdded monta), a câmera olha a sala
+        /// se montando e o ator entra (o resto é a encenação normal de uma exploração).
+        /// </summary>
+        private IEnumerator DraftSequence(ActorRunState actor, int site, int option)
         {
             BeginBusy();
-            MoveOutcome outcome = Run.Move(actor, roomIndex);
+            MoveOutcome outcome = Run.Draft(actor, site, option);
+            int roomIndex = outcome.To;
+            var anchor = AnchorOf(roomIndex);
+            if (anchor != null && houseBuilder != null)
+            {
+                AssemblySize = Mathf.Max(anchor.Size.x, anchor.Size.y);
+                AssemblyPoint = anchor.transform.position;
+                yield return houseBuilder.Assemble(roomIndex);
+                AssemblyPoint = null;
+            }
+            RefreshSites();
+            yield return MoveSequence(actor, roomIndex, outcome);
+        }
+
+        private IEnumerator MoveSequence(ActorRunState actor, int roomIndex) => MoveSequence(actor, roomIndex, null);
+
+        /// <param name="done">Movimento já resolvido pela lógica (abrir porta na casa por escolha). null = resolve aqui.</param>
+        private IEnumerator MoveSequence(ActorRunState actor, int roomIndex, MoveOutcome done)
+        {
+            if (done == null) BeginBusy();
+            MoveOutcome outcome = done ?? Run.Move(actor, roomIndex);
             var view = ViewOf(actor);
             var anchor = AnchorOf(roomIndex);
 
-            if (anchor != null) anchor.SetDiscovered(true); // a névoa sai quando alguém entra
+            if (anchor != null && done == null) anchor.SetDiscovered(true); // a névoa sai quando alguém entra
             if (view != null && rig != null) rig.Follow(view.transform);
             var idle = view != null ? view.GetComponent<ActorIdle>() : null;
             if (idle != null && anchor != null)

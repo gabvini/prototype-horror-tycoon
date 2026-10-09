@@ -102,6 +102,9 @@ namespace HorrorTycoon.UI
                 case RunPresenter.Phase.ArtefatoChoice:
                     DrawArtefatoChoice(run);
                     break;
+                case RunPresenter.Phase.DraftChoice:
+                    DrawDraftChoice();
+                    break;
                 case RunPresenter.Phase.Ended:
                     DrawEnd(run);
                     break;
@@ -313,8 +316,59 @@ namespace HorrorTycoon.UI
 
         // ================================================================== Card da sala
 
+        /// <summary>Casa por escolha (HUD antiga): card simples da porta para o vazio, com "Quem abre?".</summary>
+        private void DrawSiteCard(FilmRun run)
+        {
+            int site = presenter.CardSite;
+            if (run.DoorSite(site) == null) return;
+            var alive = new List<ActorRunState>();
+            foreach (var a in run.Actors) if (a.Alive) alive.Add(a);
+            var rect = new Rect(14, Screen.height * 0.5f - 90, 300, 96 + alive.Count * 30);
+            HudInputBlocker.Register(rect);
+            DrawPanel(rect);
+            GUI.Label(new Rect(rect.x + 10, rect.y + 8, rect.width - 20, 24), "<b>Porta fechada</b>", big);
+            bool room = run.SiteHasRoom(site);
+            GUI.Label(new Rect(rect.x + 10, rect.y + 38, rect.width - 20, 40),
+                room ? $"Do outro lado ainda não há nada. Abra e escolha 1 de {run.DraftOptionCount} salas." : "Nenhuma sala cabe aqui.", small);
+            for (int i = 0; i < alive.Count; i++)
+            {
+                var a = alive[i];
+                GUI.enabled = run.CanDraft(a, site);
+                if (GUI.Button(new Rect(rect.x + 10, rect.y + 80 + i * 30, rect.width - 20, 26), $"{a.Def.DisplayName} abre")) presenter.OpenDraft(a, site);
+                GUI.enabled = true;
+            }
+        }
+
+        /// <summary>Casa por escolha (HUD antiga): escolher a sala que nasce atrás da porta.</summary>
+        private void DrawDraftChoice()
+        {
+            var offer = presenter.CurrentDraft;
+            if (offer == null) return;
+            float w = 260f * Mathf.Max(1, offer.Options.Count) + 20f;
+            var rect = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.5f - 150, w, 290);
+            HudInputBlocker.Register(rect);
+            DrawPanel(rect);
+            GUI.Label(new Rect(rect.x, rect.y + 10, rect.width, 36), "Escolha a sala", big);
+            for (int i = 0; i < offer.Options.Count; i++)
+            {
+                var r = offer.Options[i];
+                var size = offer.Placements[i].Rect;
+                var b = new Rect(rect.x + 10 + i * 260, rect.y + 60, 250, 170);
+                if (GUI.Button(b, GUIContent.none)) presenter.ChooseDraft(i);
+                DrawRect(new Rect(b.x, b.y, b.width, 5), r.FloorColor);
+                GUI.Label(new Rect(b.x + 10, b.y + 14, b.width - 20, b.height - 20),
+                    $"<size=17><b>{r.DisplayName}</b></size>  {size.width}×{size.height} m\n\n{r.Description}", small);
+            }
+            if (GUI.Button(new Rect(rect.x + rect.width * 0.5f - 60, rect.yMax - 46, 120, 30), "Voltar")) presenter.ChooseDraft(-1);
+        }
+
         private void DrawRoomCard(FilmRun run)
         {
+            if (presenter.CardSite >= 0)
+            {
+                DrawSiteCard(run);
+                return;
+            }
             int index = presenter.CardRoom;
             if (index < 0 || index >= run.Rooms.Count) return;
             var room = run.Rooms[index];

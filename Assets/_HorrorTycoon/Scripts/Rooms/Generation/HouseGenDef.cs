@@ -55,6 +55,13 @@ namespace HorrorTycoon.Rooms.Generation
         [Tooltip("Parede em comum mínima (metros inteiros) para ligar dois espaços. Precisa caber porta + 2 margens.")]
         [Min(1)] public int minSharedWall = 3;
 
+        [Header("Casa por escolha (a casa cresce porta a porta)")]
+        [Tooltip("Liga: só o Hall, os corredores e as convivências existem no começo. As salas nascem quando um ator abre " +
+                 "uma porta para o vazio e o jogador escolhe 1 entre as opções (como Blue Prince, sem grade).")]
+        public bool growByDraft;
+        [Tooltip("Quantas salas são oferecidas a cada porta aberta.")]
+        [Min(1)] public int draftOptions = 3;
+
         [Header("Geração")]
         [Tooltip("Tentativas antes de aceitar a melhor casa encontrada (cada tentativa usa uma sub-seed).")]
         [Min(1)] public int maxAttempts = 30;

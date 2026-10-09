@@ -32,5 +32,7 @@ MonoBehaviour:
   doorWidth: 1.2
   doorCornerMargin: 0.45
   minSharedWall: 3
+  growByDraft: 1
+  draftOptions: 3
   maxAttempts: 30
   startInside: 1

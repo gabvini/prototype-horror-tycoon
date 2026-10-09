@@ -377,16 +377,17 @@ namespace HorrorTycoon.UI
             // ---------------- estado
             ctx.Sequence = phase == RunPresenter.Phase.Busy || phase == RunPresenter.Phase.ShowingResult;
             ctx.PhaseModal = phase == RunPresenter.Phase.ActBreak || phase == RunPresenter.Phase.VillainChoice
-                             || phase == RunPresenter.Phase.ArtefatoChoice || phase == RunPresenter.Phase.Ended;
+                             || phase == RunPresenter.Phase.ArtefatoChoice || phase == RunPresenter.Phase.Ended
+                             || phase == RunPresenter.Phase.DraftChoice;
             if (phase != RunPresenter.Phase.Idle && record.MenuOpen) record.ShowMenu(false);
             if (phase != RunPresenter.Phase.Idle && modals.IsOverlay) modals.Close();
             ctx.OverlayOpen = modals.IsOverlay || record.MenuOpen;
             bool cinematic = director != null && director.CurrentMode == CinematicDirector.Mode.Cinematic;
             ctx.FilmMode = phase == RunPresenter.Phase.Idle && cinematic && now - lastInputTime >= filmIdleSeconds
-                           && !ctx.OverlayOpen && presenter.CardRoom < 0;
+                           && !ctx.OverlayOpen && !presenter.HasCard;
             ctx.MonitorVisible = monitor != null && monitor.IsOpen && !ctx.PhaseModal && !ctx.Sequence && !ctx.FilmMode;
             ctx.PavorHeld = phase == RunPresenter.Phase.Busy || subtitles.PavorHeld;
-            if (!hintDismissed && (presenter.Selected != null || presenter.CardRoom >= 0)) hintDismissed = true;
+            if (!hintDismissed && (presenter.Selected != null || presenter.HasCard)) hintDismissed = true;
 
             // ---------------- relatório (antes do resto: pode devolver a fase para Idle)
             bool spaceForSkip = spacePressed && phase == RunPresenter.Phase.ShowingResult;
@@ -436,7 +437,7 @@ namespace HorrorTycoon.UI
             float panelH = ctx.Root.layout.height;
             if (!float.IsNaN(panelH) && panelH > 1f) roomCard.Root.style.maxHeight = panelH - cardTop - (24f + 136f + 12f + 16f);
             roomCard.Update(ctx);
-            Ui.Fade(roomCard.Root, calm && idle && presenter.CardRoom >= 0, 0.15f);
+            Ui.Fade(roomCard.Root, calm && idle && presenter.HasCard, 0.15f);
 
             monitorPanel.Update(ctx, ctx.MonitorVisible, !ctx.OverlayOpen);
             Ui.Fade(monitorPanel.Root, ctx.MonitorVisible, 0.2f);
@@ -465,6 +466,9 @@ namespace HorrorTycoon.UI
                     break;
                 case RunPresenter.Phase.ArtefatoChoice:
                     modals.ShowArtefato(ctx);
+                    break;
+                case RunPresenter.Phase.DraftChoice:
+                    modals.ShowDraft(ctx);
                     break;
                 case RunPresenter.Phase.VillainChoice:
                     modals.ShowVillain(ctx);

@@ -465,74 +465,8 @@ namespace HorrorTycoon.Rooms.Generation
 
             // ------------------------------------------------------------------ 5. Paredes
 
-            /// <summary>
-            /// Percorre as bordas de cada espaço metro a metro e junta trechos com o mesmo vizinho.
-            /// Parede compartilhada sai uma vez (A &lt; B); parede externa sai com B = Outside.
-            /// </summary>
-            private void ComputeWalls()
-            {
-                layout.walls.Clear();
-                foreach (var s in layout.spaces)
-                {
-                    RectInt r = s.Rect;
-                    EdgeWalls(s.Index, true, r.yMin, r.xMin, r.xMax, 0, -1);  // sul
-                    EdgeWalls(s.Index, true, r.yMax, r.xMin, r.xMax, 0, 0);   // norte
-                    EdgeWalls(s.Index, false, r.xMin, r.yMin, r.yMax, -1, 0); // oeste
-                    EdgeWalls(s.Index, false, r.xMax, r.yMin, r.yMax, 0, 0);  // leste
-                }
-            }
-
-            /// <param name="line">Coordenada fixa da borda (y se horizontal, x se vertical).</param>
-            /// <param name="offX">/ <paramref name="offY"/>: deslocamento para achar a célula do OUTRO lado.</param>
-            private void EdgeWalls(int space, bool horizontal, int line, int from, int to, int offX, int offY)
-            {
-                int runStart = from;
-                int runNeighbor = NeighborAt(horizontal, line, from, offX, offY);
-                for (int t = from + 1; t <= to; t++)
-                {
-                    int nb = t < to ? NeighborAt(horizontal, line, t, offX, offY) : int.MinValue;
-                    if (nb == runNeighbor) continue;
-                    EmitWall(space, runNeighbor, horizontal, line, runStart, t);
-                    runStart = t;
-                    runNeighbor = nb;
-                }
-            }
-
-            private int NeighborAt(bool horizontal, int line, int t, int offX, int offY)
-            {
-                int x = horizontal ? t : line + offX;
-                int y = horizontal ? line + offY : t;
-                if (x < 0 || y < 0 || x >= width || y >= height) return HouseLayout.Outside;
-                return grid[x, y];
-            }
-
-            private void EmitWall(int space, int neighbor, bool horizontal, int line, int a, int b)
-            {
-                if (neighbor != HouseLayout.Outside && neighbor < space) return; // já emitida pelo outro lado
-
-                var wall = new HouseWall
-                {
-                    A = space,
-                    B = neighbor,
-                    Horizontal = horizontal,
-                    From = horizontal ? new Vector2Int(a, line) : new Vector2Int(line, a),
-                    To = horizontal ? new Vector2Int(b, line) : new Vector2Int(line, b),
-                };
-
-                foreach (var c in layout.connections)
-                {
-                    bool samePair = (c.A == space && c.B == neighbor) || (c.B == space && c.A == neighbor);
-                    if (!samePair || c.HorizontalWall != horizontal) continue;
-                    float cLine = horizontal ? c.Position.y : c.Position.x;
-                    float cAlong = horizontal ? c.Position.x : c.Position.y;
-                    if (Mathf.Abs(cLine - line) < 0.001f && cAlong > a && cAlong < b)
-                    {
-                        wall.ConnectionIndex = c.Index;
-                        break;
-                    }
-                }
-                layout.walls.Add(wall);
-            }
+            /// <summary>Paredes: a conta mora no HouseLayout (a casa por escolha recalcula a cada sala nova).</summary>
+            private void ComputeWalls() => layout.ComputeWalls();
 
             // ------------------------------------------------------------------ Utilitários
 

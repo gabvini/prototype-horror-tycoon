@@ -407,6 +407,12 @@ namespace HorrorTycoon.Run
                     Report.Add(ReportKind.Unlock, $"<b>{r.Def.DisplayName}</b> liberado(a)! Agora dá para entrar.");
                     Log.Add(ActIndex + 1, "unlock", $"{r.Def.DisplayName} liberada pelo plot {p.Def.DisplayName}");
                 }
+                // Casa por escolha: a sala lacrada ainda não foi montada? Passa a poder ser escolhida numa porta.
+                if (UnlockForDraft(p.Def.UnlockRoom))
+                {
+                    Report.Add(ReportKind.Unlock, $"<b>{p.Def.UnlockRoom.DisplayName}</b> liberado(a)! Pode aparecer ao abrir uma porta.");
+                    Log.Add(ActIndex + 1, "unlock", $"{p.Def.UnlockRoom.DisplayName} entra na escolha de salas (plot {p.Def.DisplayName})");
+                }
             }
 
             if (p.Def.RewardTool != null && !ToolInPlay(p.Def.RewardTool))

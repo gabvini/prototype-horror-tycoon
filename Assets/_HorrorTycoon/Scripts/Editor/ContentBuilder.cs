@@ -486,6 +486,7 @@ namespace HorrorTycoon.EditorTools
             {
                 g.corridorDef = corredor;
                 g.socialPool = new List<RoomDef> { hall, jantar, tv };
+                g.growByDraft = true; // casa por escolha: as salas nascem quando um ator abre uma porta para o vazio
             });
 
             UpgradeCinemaScale(gen, salas, sizes, new[] { hall, jantar, tv },

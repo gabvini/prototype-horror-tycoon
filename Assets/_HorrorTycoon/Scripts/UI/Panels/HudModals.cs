@@ -148,6 +148,49 @@ namespace HorrorTycoon.UI
             Ui.OnClick(skip, () => { if (Ready) c.Presenter.ChooseArtefato(null); });
         }
 
+        // ---------------------------------------------------------------- Casa por escolha: escolher a sala
+
+        /// <summary>
+        /// "Escolha a sala": as salas que cabem atrás da porta aberta, em cartas (cor do piso, nome, tamanho, clima, dicas).
+        /// "voltar" fecha sem gastar nada (a oferta fica guardada para a mesma porta).
+        /// </summary>
+        public void ShowDraft(HudContext c)
+        {
+            var offer = c.Presenter.CurrentDraft;
+            if (offer == null) return;
+            var actor = c.Presenter.DraftActor;
+            var d = Open(c, "draft", "modal-pick col", false);
+            Ui.Lbl("ESCOLHA A SALA", "t-h1 modal-title fg-papel", d);
+            Ui.Lbl(actor != null ? $"{actor.Def.DisplayName} abre a porta. O que tem do outro lado?" : "O que tem do outro lado da porta?",
+                "t-body t-dim modal-sub", d);
+            var cards = Ui.El("row pick-cards", d);
+            for (int i = 0; i < offer.Options.Count; i++)
+            {
+                int option = i;
+                var room = offer.Options[i];
+                var rect = offer.Placements[i].Rect;
+                var card = Ui.El("pick-card paper col", cards);
+                var band = Ui.El("pick-band", card);
+                band.style.backgroundColor = room.FloorColor;
+                var iconWrap = Ui.El("pick-icon-wrap", card);
+                var ic = Ui.Icon(room.StagePayoffs.Count > 0 ? "spotlight" : "door", "ic-96", iconWrap);
+                ic.style.unityBackgroundImageTintColor = room.FloorColor * 1.4f;
+                Ui.Lbl(room.DisplayName, "t-display pick-name", card);
+                Ui.Lbl($"{rect.width} × {rect.height} m", "t-label t-dim", card);
+                if (!string.IsNullOrEmpty(room.Description)) Ui.Lbl(Highlight(room.Description), "t-body pick-desc", card);
+                var tags = new List<string>();
+                if (room.StagePayoffs.Count > 0) tags.Add("Palco");
+                if (room.Plots.Count > 0) tags.Add("Plot");
+                if (room.PavorPerScene > 0) tags.Add("Escura");
+                if (room.HasLockedSpot) tags.Add("Trancado");
+                if (tags.Count > 0) Ui.Lbl(string.Join(" · ", tags), "t-label pick-desc", card);
+                if (room.Hints.Count > 0) Ui.Lbl($"<i>{room.Hints[0]}</i>", "t-small t-dim pick-desc", card);
+                Ui.OnClick(card, () => { if (Ready) c.Presenter.ChooseDraft(option); });
+            }
+            var back = Ui.Lbl("<  voltar", "t-body pick-skip", d);
+            Ui.OnClick(back, () => { if (Ready) c.Presenter.ChooseDraft(-1); });
+        }
+
         /// <summary>Palavras-chave do efeito ganham a cor do significado ("Duplas rendem mais").</summary>
         public static string Highlight(string s)
         {

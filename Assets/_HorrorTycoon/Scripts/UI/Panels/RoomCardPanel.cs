@@ -20,6 +20,8 @@ namespace HorrorTycoon.UI
         private readonly ScrollView scroll;
         private string sig;
         private int shownRoom = -1;
+        /// <summary>Casa por escolha: o card mostra uma porta para o vazio (índice da porta; -1 = sala).</summary>
+        private int shownSite = -1;
 
         public RoomCardPanel(VisualElement parent, HudContext c)
         {
@@ -46,6 +48,7 @@ namespace HorrorTycoon.UI
         public void Update(HudContext c)
         {
             var run = c.Run;
+            if (UpdateSite(c)) return;
             int index = c.Presenter.CardRoom;
             bool visible = index >= 0 && index < run.Rooms.Count && c.Phase == RunPresenter.Phase.Idle;
             if (visible && !run.Rooms[index].IsDestination)
@@ -66,20 +69,122 @@ namespace HorrorTycoon.UI
             sig = s;
             shownRoom = index;
             Rebuild(c, run, index);
-            if (slide)
+            if (slide) SlideIn(c);
+        }
+
+        private void SlideIn(HudContext c)
+        {
+            // Abre em 0,18 s: desliza 24 px + fade.
+            Root.style.opacity = 0f;
+            c.Tweens.Add(0.18f, k =>
             {
-                // Abre em 0,18 s: desliza 24 px + fade.
-                Root.style.opacity = 0f;
-                c.Tweens.Add(0.18f, k =>
-                {
-                    Root.style.opacity = k;
-                    Root.style.translate = new Translate(Mathf.Lerp(-24f, 0f, HudTweens.EaseOut(k)), 0);
-                }, () =>
-                {
-                    // Devolve o controle ao USS (o fade de saída usa a classe is-off).
-                    Root.style.opacity = StyleKeyword.Null;
-                    Root.style.translate = StyleKeyword.Null;
-                }, 0f, Root);
+                Root.style.opacity = k;
+                Root.style.translate = new Translate(Mathf.Lerp(-24f, 0f, HudTweens.EaseOut(k)), 0);
+            }, () =>
+            {
+                // Devolve o controle ao USS (o fade de saída usa a classe is-off).
+                Root.style.opacity = StyleKeyword.Null;
+                Root.style.translate = StyleKeyword.Null;
+            }, 0f, Root);
+        }
+
+        // ---------------------------------------------------------------- Porta para o vazio (casa por escolha)
+
+        /// <summary>Card da porta para o vazio. True = este card está (ou deveria estar) na tela.</summary>
+        private bool UpdateSite(HudContext c)
+        {
+            var run = c.Run;
+            int site = c.Presenter.CardSite;
+            var door = run.DoorSite(site);
+            if (door == null || c.Phase != RunPresenter.Phase.Idle)
+            {
+                shownSite = -1;
+                return site >= 0;
+            }
+            if (!door.IsOpen)
+            {
+                c.Presenter.CloseRoomCard();
+                shownSite = -1;
+                return true;
+            }
+
+            var sb = new StringBuilder("site").Append(site).Append(run.ScenesLeft).Append(run.ActIndex).Append(run.SiteHasRoom(site));
+            foreach (var a in run.Actors) sb.Append(a.RoomIndex).Append(a.Alive).Append(a.IsLocked);
+            string s = sb.ToString();
+            if (s == sig && shownSite == site) return true;
+            bool slide = shownSite != site;
+            sig = s;
+            shownSite = site;
+            shownRoom = -1;
+            RebuildSite(c, run, site);
+            if (slide) SlideIn(c);
+            return true;
+        }
+
+        private void RebuildSite(HudContext c, FilmRun run, int site)
+        {
+            var door = run.DoorSite(site);
+            bool room = run.SiteHasRoom(site);
+            chips.Clear();
+            scroll.Clear();
+            var content = scroll.contentContainer;
+            colorBar.style.backgroundColor = new Color(0.95f, 0.78f, 0.3f);
+
+            title.text = "PORTA FECHADA";
+            Chip("door", "papel", "SALA NOVA", "chip-plain", c, "Do outro lado ainda não há nada. Quem abrir a porta escolhe o cômodo que nasce ali.");
+            Chip("eye", "dim", ZoneName(door.Zone), "chip-dim", c, "Parte da casa onde a porta fica: as salas oferecidas combinam com ela.");
+            mood.text = room ? "Do outro lado, só a marcação de fita no chão. O cenário ainda não foi montado."
+                             : "Não cabe mais nenhum cômodo atrás desta porta.";
+            Ui.Display(mood, true);
+
+            var sec = Section(content, "MONTAR O CENÁRIO");
+            sec.AddToClassList("section-key");
+            if (room)
+            {
+                Item(c, sec, "spotlight", "papel", $"Abrir: escolha 1 de {run.DraftOptionCount} salas",
+                    "Abra a porta e escolha qual cômodo nasce aqui. A sala se monta na hora e o ator entra para explorar.");
+                Item(c, sec, "door", "papel", $"Entrar explora a sala nova ({HudText.Cost(run.Content.Rules.exploreActionCost).ToLowerInvariant()})",
+                    "Como explorar uma sala desconhecida: encontro, plots e o que mais houver lá dentro.");
+            }
+            else Item(c, sec, "lock", "dim", "Sem espaço do outro lado", "Outra sala ocupou o espaço ou nenhuma sala restante cabe aqui.");
+
+            footerRow.Clear();
+            bool any = false;
+            foreach (var actor in run.Actors)
+            {
+                if (!actor.Alive) continue;
+                any = true;
+                var a = actor;
+                int cost = run.DraftCost(a, site);
+                bool can = run.CanDraft(a, site);
+                string badge, badgeCls, why;
+                if (a.IsLocked) { badge = "PÂNICO"; badgeCls = "badge-no"; why = "Em pânico: travado(a) nesta cena."; }
+                else if (!room) { badge = "SEM ESPAÇO"; badgeCls = "badge-no"; why = "Nenhuma sala cabe aqui."; }
+                else if (cost < 0) { badge = "SEM CAMINHO"; badgeCls = "badge-no"; why = "Não há caminho até esta porta."; }
+                else if (cost > run.ScenesLeft) { badge = "SEM CENAS"; badgeCls = "badge-no"; why = $"Custa {HudText.Cost(cost).ToLowerInvariant()} e não há cenas."; }
+                else { badge = HudText.Cost(cost); badgeCls = "badge-cost"; why = $"{HudText.Cost(cost)}: abre a porta, escolhe a sala e entra."; }
+
+                var btn = Ui.El("who-btn col" + (can ? "" : " is-disabled") + (a == c.Presenter.Selected ? " is-selected" : ""), footerRow);
+                var face = Ui.El("who-face", btn);
+                face.style.backgroundColor = a.Def.Color;
+                Ui.Lbl(a.Def.DisplayName.Substring(0, 1).ToUpperInvariant(), "t-display who-initial", face);
+                Ui.Lbl(HudText.Clip(a.Def.DisplayName, 10), "t-label who-name", btn);
+                var b = Ui.El("badge " + badgeCls, btn);
+                Ui.Lbl(badge, "t-label", b);
+                c.Tooltip.Attach(btn, $"<b>{a.Def.DisplayName}</b>\n{why}");
+                if (can) Ui.OnClick(btn, () => c.Presenter.OpenDraft(a, site));
+            }
+            Ui.Display(footer, any);
+        }
+
+        private static string ZoneName(Rooms.HouseZone zone)
+        {
+            switch (zone)
+            {
+                case Rooms.HouseZone.Social: return "FRENTE";
+                case Rooms.HouseZone.Service: return "MEIO";
+                case Rooms.HouseZone.Private: return "FUNDOS";
+                default: return "CASA";
             }
         }
 
