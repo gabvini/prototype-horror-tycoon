@@ -89,14 +89,61 @@ O monitor mostra o filme o tempo todo. Não existe tela parada de "pensando".
 - **Falas de saída** ao receber uma ordem, ligadas ao destino ("Alguém viu as velas? Vou olhar no porão.").
 - Escolhidas pela **fase do filme** (§2.2), pelo papel, pela sala e pelo que aconteceu. Conteúdo em assets, fácil de ampliar.
 
-## 6. Ordem de implementação proposta
+## 6. Decisões (09/10/2026)
 
-1. **Monitor sempre rodando + foco ao chamar o ator + cena com planos por tipo** (§4). Inverte a tela: a principal mostra o set e o monitor mostra o filme.
-2. **Falas** (§5): sistema + primeiro pacote de falas para o Ato 1.
-3. **Grid com áreas externas** (§3): troca o esqueleto gerado por peças no grid; reaproveita a oferta, a montagem e o replay.
+### 6.1 Célula do grid = 2 m ("módulo de set")
 
-## 7. Em aberto
+Medidas reais × 1,5 (escala de cinema: espaço para a câmera), arredondadas em módulos de 2 m:
 
-1. Tamanho da célula do grid: 1 m (floresta 20×20 = 20 m) ou maior?
-2. A tela principal (set) é a vista de cima isométrica de hoje?
-3. Ao chamar um ator, o tempo do jogo pausa ou o filme segue rolando (só a câmera foca)?
+| Peça | Real (aprox.) | No jogo | Células |
+|---|---|---|---|
+| Corredor (largura) | 1,2 m | 2 m | 1 |
+| Banheiro | 2,5 × 2,5 m | 4 × 4 m | 2 × 2 |
+| Quarto / Sótão | 3,5 × 3,5 m | 6 × 6 m | 3 × 3 |
+| Cozinha / Porão | 3,5 × 5 m | 6 × 8 m | 3 × 4 |
+| Sala de estar / Hall | 5 × 4 m | 8 × 6 m | 4 × 3 |
+| Clareira na floresta / cemitério | o que a cena precisa | 16–20 m | 8 × 8 a 10 × 10 |
+| Terreno máximo | — | 48 × 40 m | 24 × 20 |
+
+Quase todas as salas atuais já são múltiplas de 2 m; mudam só o banheiro (5 → 4) e o corredor (3 → 2).
+Área externa não é "a floresta inteira": é **o pedaço de floresta onde a cena é filmada**, como um set de verdade.
+
+### 6.2 Duas visões
+
+- **Set (tela principal)**: visão de **planta em grid**, limpa e legível, como o modo tático de *Endless Dungeon*: é onde se monta e se decide.
+- **Monitor do diretor**: o filme. Uma tecla troca o monitor para tela cheia e de volta.
+
+### 6.3 Selecionar não é chamar
+
+- Selecionar um ator **não para nem foca o filme**: só aparece um aviso ao lado do set ("ATLETA selecionado") e as ações dele.
+- O filme só vai para o ator quando ele **recebe uma ordem**: a cena dele toma o monitor; ao terminar, volta para o "filme corrente".
+
+### 6.4 O filme corrente (o desafio: não ficar repetitivo)
+
+Enquanto ninguém age, um **montador automático** monta o filme a partir de **beats**, escolhidos pelo estado da run:
+
+| Beat | Exemplos |
+|---|---|
+| Conversa (2–4 falas) | relação entre os atores presentes, fase do filme, a sala |
+| Plano de ambiente | exterior da casa, luz que falha, corredor vazio, chuva na janela |
+| Inserto | objeto do plot, a arma no chão, a porta lacrada |
+| Provocação do vilão | silhueta ao fundo, POV dele observando (Ato 2+) |
+| Ação contínua | perseguição na floresta enquanto ela durar, alguém se escondendo |
+| Bastidores (quando nada novo acontece) | claquete, maquiagem, o ator ensaiando a fala: o "intervalo entre takes" |
+
+Contra repetição: **memória de beats recentes** (não repete o mesmo beat/fala por N minutos), **combinação** (beat × planos × falas × lugar),
+**peso pelo que mudou** (o que aconteceu por último aparece primeiro) e **bastidores** como válvula quando o conteúdo acaba.
+
+### 6.5 Elenco além do estereótipo: relações
+
+- **Arquétipos** continuam (Atleta, Popular, Nerd, Final Girl) e entram outros: **Criança, a Ex, o Namorado, o Influencer, o Padre cético, o Tio conspiracionista…**
+- **Relações entre atores** (tags de par): namorados, ex, irmãos, rivais, paixão secreta, dívida, pai/filho.
+  Relações **mudam no filme** (a ex volta com o namorado; rivais viram aliados) e alimentam **falas, combos e plots**.
+- Relações **absurdas valem**, inclusive com o **vilão** (o vilão é o ex de alguém; o fantasma se apaixona pela Popular; a Criança é amiga do monstro).
+- **Subverter o clichê rende**: Final Girl que morre primeiro, o cético que acredita, o vilão que é vítima. É assim que cada run vira um filme diferente.
+
+## 7. Ordem de implementação proposta
+
+1. **Monitor sempre rodando**: montador de beats (conversa, ambiente, inserto, bastidores) + cena do ator ao receber ordem, com planos por tipo.
+2. **Falas e relações**: sistema de falas por situação/papel/relação + pacote do Ato 1; relações como dados (tags de par) ligadas aos combos.
+3. **Set em grid (célula de 2 m)** com áreas externas e a visão de planta; reaproveita a oferta "1 de 3", a montagem e o replay.
