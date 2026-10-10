@@ -447,10 +447,10 @@ namespace HorrorTycoon.EditorTools
             EnsureFolder(DataRoot, "Geracao");
 
             // Tamanhos (metros) na ordem de 'salas': Cozinha, Sala de estar, Banheiro, Quarto, Porão, Sótão.
-            // Escala de cinema ×1,5 (08/10/2026): espaço para a câmera dentro dos cômodos.
+            // Escala de cinema ×1,5 (08/10/2026), em múltiplos da célula de 2 m do set em grid (10/10/2026).
             var sizes = new[]
             {
-                new Vector2Int(6, 8), new Vector2Int(8, 6), new Vector2Int(5, 5),
+                new Vector2Int(6, 8), new Vector2Int(8, 6), new Vector2Int(4, 4),
                 new Vector2Int(6, 6), new Vector2Int(6, 8), new Vector2Int(6, 6),
             };
             for (int i = 0; i < salas.Count && i < sizes.Length; i++)
@@ -486,7 +486,11 @@ namespace HorrorTycoon.EditorTools
             {
                 g.corridorDef = corredor;
                 g.socialPool = new List<RoomDef> { hall, jantar, tv };
-                g.growByDraft = true; // casa por escolha: as salas nascem quando um ator abre uma porta para o vazio
+                // Set em grid: as peças nascem quando um ator abre uma porta para o vazio. Terreno 24 × 20 células de 2 m.
+                g.growByDraft = true;
+                g.gridCell = 2;
+                g.bounds = new Vector2Int(48, 40);
+                g.doorCornerMargin = 0.4f;
             });
 
             UpgradeCinemaScale(gen, salas, sizes, new[] { hall, jantar, tv },
@@ -501,7 +505,7 @@ namespace HorrorTycoon.EditorTools
         private static void UpgradeCinemaScale(HouseGenDef gen, List<RoomDef> salas, Vector2Int[] roomSizes,
             RoomDef[] socials, Vector2Int[] socialSizes)
         {
-            if (gen == null || gen.corridorWidth >= 3) return;
+            if (gen == null || gen.corridorWidth >= 3 || gen.growByDraft) return; // set em grid: medidas próprias
 
             void SetSize(RoomDef r, Vector2Int s)
             {

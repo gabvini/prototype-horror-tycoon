@@ -151,7 +151,7 @@ namespace HorrorTycoon.UI
         // ---------------------------------------------------------------- Casa por escolha: escolher a sala
 
         /// <summary>
-        /// "Escolha a sala": as salas que cabem atrás da porta aberta, em cartas (cor do piso, nome, tamanho, clima, dicas).
+        /// "Monte o set": as peças que cabem atrás da porta aberta, em cartas (cor do piso, nome, tipo, tamanho em células, clima, dicas).
         /// "voltar" fecha sem gastar nada (a oferta fica guardada para a mesma porta).
         /// </summary>
         public void ShowDraft(HudContext c)
@@ -160,7 +160,7 @@ namespace HorrorTycoon.UI
             if (offer == null) return;
             var actor = c.Presenter.DraftActor;
             var d = Open(c, "draft", "modal-pick col", false);
-            Ui.Lbl("ESCOLHA A SALA", "t-h1 modal-title fg-papel", d);
+            Ui.Lbl("MONTE O SET", "t-h1 modal-title fg-papel", d);
             Ui.Lbl(actor != null ? $"{actor.Def.DisplayName} abre a porta. O que tem do outro lado?" : "O que tem do outro lado da porta?",
                 "t-body t-dim modal-sub", d);
             var cards = Ui.El("row pick-cards", d);
@@ -176,7 +176,11 @@ namespace HorrorTycoon.UI
                 var ic = Ui.Icon(room.StagePayoffs.Count > 0 ? "spotlight" : "door", "ic-96", iconWrap);
                 ic.style.unityBackgroundImageTintColor = room.FloorColor * 1.4f;
                 Ui.Lbl(room.DisplayName, "t-display pick-name", card);
-                Ui.Lbl($"{rect.width} × {rect.height} m", "t-label t-dim", card);
+                int cell = Mathf.Max(1, c.Run.GridCell);
+                string kind = room.Kind == Rooms.SpaceKind.Corridor ? "Corredor · só passagem, abre portas"
+                            : room.Kind == Rooms.SpaceKind.Social ? "Convivência · sem encontro" : "Sala · explorar";
+                Ui.Lbl(kind, "t-label", card);
+                Ui.Lbl($"{rect.width / cell} × {rect.height / cell} células ({rect.width} × {rect.height} m)", "t-label t-dim", card);
                 if (!string.IsNullOrEmpty(room.Description)) Ui.Lbl(Highlight(room.Description), "t-body pick-desc", card);
                 var tags = new List<string>();
                 if (room.StagePayoffs.Count > 0) tags.Add("Palco");

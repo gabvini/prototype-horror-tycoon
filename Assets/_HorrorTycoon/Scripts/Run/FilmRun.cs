@@ -116,13 +116,14 @@ namespace HorrorTycoon.Run
                 var pool = content.Rooms.Concat(houseGen.extraRoomPool)
                     .Where(r => r != null && r.Kind == SpaceKind.Room).Distinct().ToList();
                 // Fluxo próprio: gerar a casa não muda a sequência dos encontros da run.
-                Layout = HouseGenerator.Generate(houseGen, pool, new GameRandom(GameRandom.Mix(seed, LayoutSalt)));
+                var layoutRng = new GameRandom(GameRandom.Mix(seed, LayoutSalt));
                 if (houseGen.growByDraft)
                 {
-                    // Casa por escolha: fica só o esqueleto; as salas nascem nas portas para o vazio (FilmRun.Draft.cs).
-                    Layout = HouseDraft.Skeleton(Layout);
+                    // Set em grid: só a convivência inicial; o resto nasce nas portas para o vazio (FilmRun.Draft.cs).
+                    Layout = HouseDraft.StartLayout(houseGen, layoutRng);
                     InitDraft(houseGen, pool, seed);
                 }
+                else Layout = HouseGenerator.Generate(houseGen, pool, layoutRng);
 
                 foreach (var space in Layout.Spaces)
                 {
@@ -147,7 +148,7 @@ namespace HorrorTycoon.Run
             Log.filmFormat = content.FilmFormat.DisplayName;
             Log.Add(0, "start", $"Filme '{content.FilmFormat.DisplayName}' — seed {seed}" +
                 (Layout != null ? $" | casa gerada: {Layout.CountOf(SpaceKind.Room)} salas, {Layout.Attempts} tentativa(s)" : "") +
-            (Layout != null && Layout.GrowsByDraft ? $" | casa por escolha: {Layout.Sites.Count} portas para o vazio" : ""));
+            (Layout != null && Layout.GrowsByDraft ? $" | set em grid: {Layout.Sites.Count} portas para o vazio" : ""));
         }
 
         /// <summary>Chamar uma vez depois de assinar os eventos.</summary>

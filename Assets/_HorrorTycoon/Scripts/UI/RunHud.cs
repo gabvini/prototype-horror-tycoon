@@ -329,7 +329,7 @@ namespace HorrorTycoon.UI
             GUI.Label(new Rect(rect.x + 10, rect.y + 8, rect.width - 20, 24), "<b>Porta fechada</b>", big);
             bool room = run.SiteHasRoom(site);
             GUI.Label(new Rect(rect.x + 10, rect.y + 38, rect.width - 20, 40),
-                room ? $"Do outro lado ainda não há nada. Abra e escolha 1 de {run.DraftOptionCount} salas." : "Nenhuma sala cabe aqui.", small);
+                room ? $"Do outro lado ainda não há nada. Abra e escolha 1 de {run.DraftOptionCount} peças." : "Nenhuma peça cabe aqui.", small);
             for (int i = 0; i < alive.Count; i++)
             {
                 var a = alive[i];
@@ -348,7 +348,7 @@ namespace HorrorTycoon.UI
             var rect = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.5f - 150, w, 290);
             HudInputBlocker.Register(rect);
             DrawPanel(rect);
-            GUI.Label(new Rect(rect.x, rect.y + 10, rect.width, 36), "Escolha a sala", big);
+            GUI.Label(new Rect(rect.x, rect.y + 10, rect.width, 36), "Monte o set", big);
             for (int i = 0; i < offer.Options.Count; i++)
             {
                 var r = offer.Options[i];

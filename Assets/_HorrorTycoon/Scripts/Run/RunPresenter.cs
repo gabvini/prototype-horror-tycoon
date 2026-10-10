@@ -230,6 +230,7 @@ namespace HorrorTycoon.Run
             }
 
             if (kb.tabKey.wasPressedThisFrame) SelectNextActor();
+            if (kb.gKey.wasPressedThisFrame && houseBuilder != null) houseBuilder.SetGridVisible(!houseBuilder.GridVisible); // grade do set
             if (kb.escapeKey.wasPressedThisFrame) CloseRoomCard();
         }
 
@@ -537,17 +538,18 @@ namespace HorrorTycoon.Run
         {
             BeginBusy();
             MoveOutcome outcome = Run.Draft(actor, site, option);
-            int roomIndex = outcome.To;
-            var anchor = AnchorOf(roomIndex);
+            int built = Run.Rooms.Count - 1; // a peça nova é sempre a última
+            var anchor = AnchorOf(built);
             if (anchor != null && houseBuilder != null)
             {
                 AssemblySize = Mathf.Max(anchor.Size.x, anchor.Size.y);
                 AssemblyPoint = anchor.transform.position;
-                yield return houseBuilder.Assemble(roomIndex);
+                yield return houseBuilder.Assemble(built);
                 AssemblyPoint = null;
             }
             RefreshSites();
-            yield return MoveSequence(actor, roomIndex, outcome);
+            // Sala: o ator entra (exploração). Convivência: vai para lá. Corredor: fica onde está (só o relatório da cena).
+            yield return MoveSequence(actor, outcome.To, outcome);
         }
 
         private IEnumerator MoveSequence(ActorRunState actor, int roomIndex) => MoveSequence(actor, roomIndex, null);
@@ -569,7 +571,7 @@ namespace HorrorTycoon.Run
                 idle.SetHome(anchor.transform.position, hub ? 0.5f : 1.0f);
             }
 
-            if (view != null && anchor != null)
+            if (view != null && anchor != null && (done == null || outcome.From != outcome.To))
             {
                 var mover = view.GetComponent<ActorMover>();
                 if (mover != null)

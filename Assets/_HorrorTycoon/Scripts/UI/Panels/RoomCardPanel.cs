@@ -131,22 +131,22 @@ namespace HorrorTycoon.UI
             colorBar.style.backgroundColor = new Color(0.95f, 0.78f, 0.3f);
 
             title.text = "PORTA FECHADA";
-            Chip("door", "papel", "SALA NOVA", "chip-plain", c, "Do outro lado ainda não há nada. Quem abrir a porta escolhe o cômodo que nasce ali.");
+            Chip("door", "papel", "PEÇA NOVA", "chip-plain", c, "Do outro lado ainda não há nada. Quem abrir a porta escolhe a peça do set que nasce ali.");
             Chip("eye", "dim", ZoneName(door.Zone), "chip-dim", c, "Parte da casa onde a porta fica: as salas oferecidas combinam com ela.");
             mood.text = room ? "Do outro lado, só a marcação de fita no chão. O cenário ainda não foi montado."
-                             : "Não cabe mais nenhum cômodo atrás desta porta.";
+                             : "Não cabe mais nenhuma peça atrás desta porta.";
             Ui.Display(mood, true);
 
             var sec = Section(content, "MONTAR O CENÁRIO");
             sec.AddToClassList("section-key");
             if (room)
             {
-                Item(c, sec, "spotlight", "papel", $"Abrir: escolha 1 de {run.DraftOptionCount} salas",
-                    "Abra a porta e escolha qual cômodo nasce aqui. A sala se monta na hora e o ator entra para explorar.");
-                Item(c, sec, "door", "papel", $"Entrar explora a sala nova ({HudText.Cost(run.Content.Rules.exploreActionCost).ToLowerInvariant()})",
-                    "Como explorar uma sala desconhecida: encontro, plots e o que mais houver lá dentro.");
+                Item(c, sec, "spotlight", "papel", $"Abrir: escolha 1 de {run.DraftOptionCount} peças",
+                    "Abra a porta e escolha a peça do set que nasce aqui (sala, convivência ou corredor). Ela se monta na hora e traz portas novas.");
+                Item(c, sec, "door", "papel", $"Montar grava 1 cena ({HudText.Cost(run.Content.Rules.exploreActionCost).ToLowerInvariant()})",
+                    "Sala: o ator entra e explora (encontro, plots). Convivência: o ator vai para lá. Corredor: só passagem, o ator fica.");
             }
-            else Item(c, sec, "lock", "dim", "Sem espaço do outro lado", "Outra sala ocupou o espaço ou nenhuma sala restante cabe aqui.");
+            else Item(c, sec, "lock", "dim", "Sem espaço do outro lado", "Outra peça ocupou o espaço ou nenhuma peça restante cabe aqui.");
 
             footerRow.Clear();
             bool any = false;
@@ -159,10 +159,10 @@ namespace HorrorTycoon.UI
                 bool can = run.CanDraft(a, site);
                 string badge, badgeCls, why;
                 if (a.IsLocked) { badge = "PÂNICO"; badgeCls = "badge-no"; why = "Em pânico: travado(a) nesta cena."; }
-                else if (!room) { badge = "SEM ESPAÇO"; badgeCls = "badge-no"; why = "Nenhuma sala cabe aqui."; }
+                else if (!room) { badge = "SEM ESPAÇO"; badgeCls = "badge-no"; why = "Nenhuma peça cabe aqui."; }
                 else if (cost < 0) { badge = "SEM CAMINHO"; badgeCls = "badge-no"; why = "Não há caminho até esta porta."; }
                 else if (cost > run.ScenesLeft) { badge = "SEM CENAS"; badgeCls = "badge-no"; why = $"Custa {HudText.Cost(cost).ToLowerInvariant()} e não há cenas."; }
-                else { badge = HudText.Cost(cost); badgeCls = "badge-cost"; why = $"{HudText.Cost(cost)}: abre a porta, escolhe a sala e entra."; }
+                else { badge = HudText.Cost(cost); badgeCls = "badge-cost"; why = $"{HudText.Cost(cost)}: abre a porta e escolhe a peça."; }
 
                 var btn = Ui.El("who-btn col" + (can ? "" : " is-disabled") + (a == c.Presenter.Selected ? " is-selected" : ""), footerRow);
                 var face = Ui.El("who-face", btn);

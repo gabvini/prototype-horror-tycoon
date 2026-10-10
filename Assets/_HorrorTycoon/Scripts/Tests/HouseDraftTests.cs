@@ -13,8 +13,8 @@ using UnityEngine;
 namespace HorrorTycoon.Tests
 {
     /// <summary>
-    /// Casa por escolha (HouseGenDef.growByDraft): esqueleto + portas para o vazio, oferta de salas, sala nova na planta,
-    /// FilmRun.Draft e replay. Sem cena. Conteúdo com as medidas da escala de cinema (×1,5).
+    /// Set em grid (HouseGenDef.growByDraft): começo só com o Hall + portas para o vazio, oferta de peças, peça nova na planta
+    /// (alinhada ao grid, com portas novas), FilmRun.Draft e replay. Sem cena. Medidas em células de 2 m.
     /// </summary>
     public class HouseDraftTests
     {
@@ -33,7 +33,7 @@ namespace HorrorTycoon.Tests
             rules = ScriptableObject.CreateInstance<GameRulesDef>();
             format = ScriptableObject.CreateInstance<FilmFormatDef>();
 
-            corridor = MakeDef("Corredor", SpaceKind.Corridor, new Vector2Int(3, 3), false);
+            corridor = MakeDef("Corredor", SpaceKind.Corridor, new Vector2Int(2, 8), false);
             hall = MakeDef("Hall", SpaceKind.Social, new Vector2Int(8, 6), true);
             jantar = MakeDef("Jantar", SpaceKind.Social, new Vector2Int(6, 6), false);
             tv = MakeDef("TV", SpaceKind.Social, new Vector2Int(8, 6), false);
@@ -43,7 +43,7 @@ namespace HorrorTycoon.Tests
             {
                 MakeDef("Cozinha", SpaceKind.Room, new Vector2Int(6, 8), false),
                 MakeDef("Sala de estar", SpaceKind.Room, new Vector2Int(8, 6), false),
-                MakeDef("Banheiro", SpaceKind.Room, new Vector2Int(5, 5), false),
+                MakeDef("Banheiro", SpaceKind.Room, new Vector2Int(4, 4), false),
                 MakeDef("Quarto", SpaceKind.Room, new Vector2Int(6, 6), false),
                 porao,
                 MakeDef("Sótão", SpaceKind.Room, new Vector2Int(6, 6), false),
@@ -73,6 +73,9 @@ namespace HorrorTycoon.Tests
             g.corridorDef = corridor;
             g.socialPool = new List<RoomDef> { hall, jantar, tv };
             g.growByDraft = true;
+            g.gridCell = 2;
+            g.bounds = new Vector2Int(48, 40);
+            g.doorCornerMargin = 0.4f;
             return g;
         }
 
@@ -94,31 +97,35 @@ namespace HorrorTycoon.Tests
         private static string Signature(HouseLayout l) =>
             string.Join("|", l.Spaces.Select(s => $"{s.Def.DisplayName}:{s.Rect}"));
 
-        // ==================================================================== Esqueleto
+        // ==================================================================== Começo
 
         [Test]
-        public void Esqueleto_SemSalas_ComPortasParaOVazioEmParedesExternas()
+        public void Comeco_SoOHall_NaFrente_ComPortasParaOVazio()
         {
-            for (int seed = 1; seed <= 150; seed++)
+            for (int seed = 1; seed <= 50; seed++)
             {
                 var run = NewRun(seed);
                 var l = run.Layout;
                 Assert.IsTrue(l.GrowsByDraft);
                 Assert.IsTrue(l.Validate(out string error), $"seed {seed}: {error}");
-                Assert.AreEqual(0, l.CountOf(SpaceKind.Room), $"seed {seed}: o esqueleto não tem salas");
-                Assert.Greater(l.Sites.Count, 0, $"seed {seed}: sem portas para o vazio");
-
-                foreach (var s in l.Sites)
-                {
-                    var walls = l.Walls.Where(w => w.SiteIndices.Contains(s.Index)).ToList();
-                    Assert.AreEqual(1, walls.Count, $"seed {seed}: porta {s.Index} deve cair em 1 trecho de parede");
-                    Assert.IsTrue(walls[0].IsExterior && walls[0].A == s.Host, $"seed {seed}: porta {s.Index} fora da parede externa do host");
-                    Assert.IsTrue(HouseWorldMap.Gaps(l, walls[0]).Any(g => g.Site == s.Index && Mathf.Abs(g.To - g.From - s.Width) < 0.01f),
-                        $"seed {seed}: vão da porta {s.Index}");
-                    Assert.AreNotEqual(SpaceKind.Room, l.Spaces[s.Host].Kind);
-                    Assert.IsTrue(run.SiteHasRoom(s.Index), $"seed {seed}: porta {s.Index} sem sala que caiba no começo");
-                }
+                Assert.AreEqual(1, l.Spaces.Count, "começa só com o Hall");
+                Assert.AreSame(hall, l.Spaces[0].Def);
+                Assert.AreEqual(0, l.Spaces[0].Rect.yMin, "o Hall fica na frente do terreno");
+                Assert.AreEqual(3, l.Sites.Count, "portas para o vazio nos lados norte, leste e oeste");
+                Assert.IsTrue(run.Actors.All(a => a.RoomIndex == 0), "o elenco começa no Hall");
+                foreach (var s in l.Sites) AssertSiteOnWall(l, s, seed);
             }
+        }
+
+        private static void AssertSiteOnWall(HouseLayout l, HouseDoorSite s, int seed)
+        {
+            var walls = l.Walls.Where(w => w.SiteIndices.Contains(s.Index)).ToList();
+            Assert.AreEqual(1, walls.Count, $"seed {seed}: porta {s.Index} deve cair em 1 trecho de parede");
+            Assert.IsTrue(walls[0].IsExterior && walls[0].A == s.Host, $"seed {seed}: porta {s.Index} fora da parede externa do host");
+            Assert.IsTrue(HouseWorldMap.Gaps(l, walls[0]).Any(g => g.Site == s.Index && Mathf.Abs(g.To - g.From - s.Width) < 0.01f),
+                $"seed {seed}: vão da porta {s.Index}");
+            float along = s.HorizontalWall ? s.Position.x : s.Position.y;
+            Assert.AreEqual(1f, Mathf.Repeat(along, 2f), 0.001f, $"seed {seed}: porta {s.Index} fora do meio da célula");
         }
 
         // ==================================================================== Oferta
@@ -154,15 +161,17 @@ namespace HorrorTycoon.Tests
             var l = run.Layout;
             foreach (var s in l.Sites)
             {
-                foreach (var def in pool)
+                foreach (var def in pool.Concat(new[] { corridor, jantar, tv }))
                 {
-                    if (!HouseDraft.TryPlace(l, s, def, 0.45f, out var p)) continue;
+                    if (!HouseDraft.TryPlace(l, s, def, new DraftRules(), out var p)) continue;
                     RectInt host = l.Spaces[s.Host].Rect;
                     Assert.IsTrue(HouseLayout.TryGetSharedWall(host, p.Rect, out var from, out var to), "a sala encosta no host");
                     float along = s.HorizontalWall ? s.Position.x : s.Position.y;
                     float lo = s.HorizontalWall ? from.x : from.y, hi = s.HorizontalWall ? to.x : to.y;
-                    Assert.LessOrEqual(lo, along - s.Width * 0.5f - 0.45f + 0.001f);
-                    Assert.GreaterOrEqual(hi, along + s.Width * 0.5f + 0.45f - 0.001f);
+                    Assert.LessOrEqual(lo, along - s.Width * 0.5f - 0.4f + 0.001f);
+                    Assert.GreaterOrEqual(hi, along + s.Width * 0.5f + 0.4f - 0.001f);
+                    Assert.AreEqual(0, p.Rect.xMin % 2, "alinhada ao grid");
+                    Assert.AreEqual(0, p.Rect.yMin % 2, "alinhada ao grid");
                     Vector2Int size = p.Rotated ? new Vector2Int(def.Size.y, def.Size.x) : def.Size;
                     Assert.AreEqual(size, new Vector2Int(p.Rect.width, p.Rect.height));
                 }
@@ -172,41 +181,57 @@ namespace HorrorTycoon.Tests
         // ==================================================================== Abrir a porta
 
         [Test]
-        public void Draft_SalaNasce_AtorEntra_GastaCena_PlantaContinuaValida()
+        public void Draft_PecaNasce_AlinhadaAoGrid_ComPortasNovas_PlantaContinuaValida()
         {
+            int corridors = 0, socials = 0, roomsBuilt = 0;
             for (int seed = 1; seed <= 150; seed++)
             {
                 var run = NewRun(seed);
                 var l = run.Layout;
                 int guard = 0;
-                while (guard++ < 10 && run.Status == RunStatus.Playing)
+                while (guard++ < 14 && run.Status == RunStatus.Playing)
                 {
                     var actor = run.Actors.First(a => a.Alive);
                     int site = FirstDraftable(run, actor);
                     if (site < 0) break;
                     var offer = run.OpenDraft(site);
+                    Assert.LessOrEqual(offer.Options.Count(o => o.Kind == SpaceKind.Corridor), 1, "no máximo 1 corredor por oferta");
                     int before = run.Rooms.Count, scenes = run.ActionsLeft, act = run.ActIndex;
+                    int option = (seed + guard) % offer.Options.Count;
+                    var def = offer.Options[option];
+                    int from = actor.RoomIndex;
 
-                    var outcome = run.Draft(actor, site, (seed + guard) % offer.Options.Count);
+                    var outcome = run.Draft(actor, site, option);
 
                     Assert.AreEqual(before + 1, run.Rooms.Count, $"seed {seed}");
-                    Assert.AreEqual(before, actor.RoomIndex, "o ator entra na sala nova");
-                    Assert.AreSame(offer.Options[(seed + guard) % offer.Options.Count], run.Rooms[before].Def);
-                    Assert.IsNotNull(outcome.Encounter, "abrir a porta é explorar: tem encontro");
+                    Assert.AreSame(def, run.Rooms[before].Def);
+                    var rect = l.Spaces[before].Rect;
+                    Assert.IsTrue(rect.xMin % 2 == 0 && rect.yMin % 2 == 0 && rect.width % 2 == 0 && rect.height % 2 == 0, $"seed {seed}: fora do grid {rect}");
+                    if (def.Kind == SpaceKind.Room)
+                    {
+                        roomsBuilt++;
+                        Assert.AreEqual(before, actor.RoomIndex, "o ator entra na sala nova");
+                        Assert.IsNotNull(outcome.Encounter, "abrir a porta de uma sala é explorar");
+                    }
+                    else if (def.Kind == SpaceKind.Social) { socials++; Assert.AreEqual(before, actor.RoomIndex); }
+                    else { corridors++; Assert.AreEqual(from, actor.RoomIndex, "corredor é só passagem: o ator fica"); }
                     if (run.ActIndex == act && run.Status == RunStatus.Playing)
-                        Assert.AreEqual(scenes - rules.exploreActionCost, run.ActionsLeft, "custa como explorar");
+                        Assert.AreEqual(scenes - rules.exploreActionCost, run.ActionsLeft, "custa uma cena");
                     Assert.IsTrue(l.Validate(out string error), $"seed {seed}: {error}");
-                    Assert.Greater(run.Map.Doors(l.StartSpaceIndex, before), 0, "sala nova ligada à casa");
+                    Assert.Greater(run.Map.Doors(l.StartSpaceIndex, before), 0, "peça nova ligada à casa");
                     Assert.IsFalse(l.Sites[site].IsOpen);
-                    Assert.AreEqual(before, l.Sites[site].Space);
                     foreach (var c in l.Connections)
                         Assert.AreEqual(1, l.Walls.Count(w => w.ConnectionIndex == c.Index), $"seed {seed}: ligação {c.Index}");
+                    foreach (var s in l.Sites.Where(x => x.IsOpen)) AssertSiteOnWall(l, s, seed);
 
                     if (run.CanMove(actor, l.StartSpaceIndex)) run.Move(actor, l.StartSpaceIndex);
                     if (run.AwaitingArtefatoChoice) run.ChooseArtefato(null);
                 }
-                Assert.Greater(l.CountOf(SpaceKind.Room), 0, $"seed {seed}: nenhuma sala nasceu");
+                Assert.Greater(l.Spaces.Count, 1, $"seed {seed}: nenhuma peça nasceu");
             }
+            Assert.Greater(roomsBuilt, 0);
+            Assert.Greater(corridors, 0, "corredores aparecem na escolha");
+            Assert.Greater(socials, 0, "convivências aparecem na escolha");
         }
 
         [Test]
@@ -215,8 +240,11 @@ namespace HorrorTycoon.Tests
             var run = NewRun(11);
             var actor = run.Actors[0];
             int site = FirstDraftable(run, actor);
-            var chosen = run.OpenDraft(site).Options[0];
-            run.Draft(actor, site, 0);
+            var offer = run.OpenDraft(site);
+            int option = offer.Options.FindIndex(o => o.Kind == SpaceKind.Room);
+            Assert.GreaterOrEqual(option, 0, "a 1ª oferta tem alguma sala");
+            var chosen = offer.Options[option];
+            run.Draft(actor, site, option);
             run.Move(actor, run.Layout.StartSpaceIndex);
             for (int i = 0; i < run.DoorSites.Count; i++)
             {

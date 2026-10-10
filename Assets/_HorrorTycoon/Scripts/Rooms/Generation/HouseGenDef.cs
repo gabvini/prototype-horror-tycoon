@@ -55,11 +55,14 @@ namespace HorrorTycoon.Rooms.Generation
         [Tooltip("Parede em comum mínima (metros inteiros) para ligar dois espaços. Precisa caber porta + 2 margens.")]
         [Min(1)] public int minSharedWall = 3;
 
-        [Header("Casa por escolha (a casa cresce porta a porta)")]
-        [Tooltip("Liga: só o Hall, os corredores e as convivências existem no começo. As salas nascem quando um ator abre " +
-                 "uma porta para o vazio e o jogador escolhe 1 entre as opções (como Blue Prince, sem grade).")]
+        [Header("Set em grid (a casa cresce peça a peça)")]
+        [Tooltip("Liga: a casa começa só com a convivência inicial (o Hall). Cada porta para o vazio, ao ser aberta, oferece " +
+                 "peças (salas, convivências, corredores) que cabem ali; a escolhida se monta e traz portas novas. " +
+                 "O terreno é 'bounds' dividido em células de 'gridCell' m. Desligado: a casa gerada inteira (corredores + salas).")]
         public bool growByDraft;
-        [Tooltip("Quantas salas são oferecidas a cada porta aberta.")]
+        [Tooltip("Lado da célula do grid em metros (o 'módulo de set'). Tamanhos das peças são arredondados para múltiplos dela.")]
+        [Min(1)] public int gridCell = 2;
+        [Tooltip("Quantas peças são oferecidas a cada porta aberta.")]
         [Min(1)] public int draftOptions = 3;
 
         [Header("Geração")]

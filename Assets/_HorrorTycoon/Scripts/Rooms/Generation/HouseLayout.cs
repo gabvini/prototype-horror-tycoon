@@ -133,6 +133,8 @@ namespace HorrorTycoon.Rooms.Generation
         public IReadOnlyList<HouseDoorSite> Sites => sites;
         /// <summary>True = casa por escolha (cresce a cada sala escolhida).</summary>
         public bool GrowsByDraft { get; internal set; }
+        /// <summary>Set em grid: lado da célula em metros (1 = sem grid).</summary>
+        public int GridCell { get; internal set; } = 1;
         public IReadOnlyList<HouseConnection> Connections => connections;
         public IReadOnlyList<HouseWall> Walls => walls;
 

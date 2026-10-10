@@ -65,6 +65,7 @@ namespace HorrorTycoon.Cameras
         private Transform followTarget;
         private Vector3? glideGoal;
         private float breatheWeight;
+        private bool jumpedToHouse;
         private int seenHouseVersion;
 
         // Limites efetivos: os do Inspector (casa fixa do P0) ou ampliados para caber a casa gerada (HouseBounds).
@@ -128,12 +129,14 @@ namespace HorrorTycoon.Cameras
 
         private void Update()
         {
-            // Casa gerada nova: o pivô vai para o centro dela (uma vez por casa). P0: nunca acontece.
+            // Casa gerada nova: o pivô vai para o centro dela (só na 1ª vez: no set em grid a área cresce a cada peça,
+            // e a câmera não pode pular). P0: nunca acontece.
             if (HouseBounds.Version != seenHouseVersion)
             {
                 seenHouseVersion = HouseBounds.Version;
-                if (HouseBounds.HasValue && followTarget == null && !glideGoal.HasValue)
+                if (HouseBounds.HasValue && !jumpedToHouse && followTarget == null && !glideGoal.HasValue)
                 {
+                    jumpedToHouse = true;
                     Vector3 c = HouseBounds.Center;
                     transform.position = new Vector3(c.x, transform.position.y, c.z);
                 }

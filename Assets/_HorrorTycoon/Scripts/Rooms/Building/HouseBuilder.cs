@@ -93,6 +93,18 @@ namespace HorrorTycoon.Rooms.Building
         private static readonly Color SiteTape = new Color(0.95f, 0.78f, 0.3f, 0.85f);
         private static readonly Color SiteTapeHover = new Color(1f, 0.93f, 0.55f, 1f);
         private static readonly Color SiteTapeDim = new Color(0.55f, 0.5f, 0.42f, 0.35f);
+        private static readonly Color GridLine = new Color(0.78f, 0.74f, 0.62f, 0.16f);
+        private static readonly Color GridBorder = new Color(0.95f, 0.78f, 0.3f, 0.45f);
+
+        private GameObject gridOverlay;
+
+        /// <summary>Set em grid: a grade do terreno está visível (tecla G no RunPresenter).</summary>
+        public bool GridVisible => gridOverlay != null && gridOverlay.activeSelf;
+
+        public void SetGridVisible(bool on)
+        {
+            if (gridOverlay != null) gridOverlay.SetActive(on);
+        }
 
         private HouseArtKit kit;
         private Transform root, wallsRoot, decorRoot, sitesRoot;
@@ -155,6 +167,7 @@ namespace HorrorTycoon.Rooms.Building
             for (int i = 0; i < n; i++) BuildSpace(i);
             SyncWalls();
             SyncSites();
+            if (layout.GrowsByDraft) BuildGridOverlay();
             BuildPorchAndPath();
             MarkSeeThrough(wallsRoot);
             MarkSeeThrough(decorRoot);
@@ -177,8 +190,29 @@ namespace HorrorTycoon.Rooms.Building
 
             root.gameObject.SetActive(true);
 
-            Vector3 door = layout.FrontDoor != null ? Map.ToWorld(layout.FrontDoor.Position) : new Vector3(0f, 0f, frontZ);
-            HouseBounds.Set(Map.FootprintWorld, door);
+            PublishBounds();
+        }
+
+        /// <summary>
+        /// Onde a casa está (câmeras e monitor). Set em grid: só o que já foi montado, com 1 célula de folga
+        /// (a câmera acompanha o set crescendo, em vez de enquadrar o terreno vazio). Casa gerada: a pegada inteira.
+        /// </summary>
+        private void PublishBounds()
+        {
+            Vector3 door = Layout.FrontDoor != null ? Map.ToWorld(Layout.FrontDoor.Position) : new Vector3(0f, 0f, frontZ);
+            Rect area = Map.FootprintWorld;
+            if (Layout.GrowsByDraft && Layout.Spaces.Count > 0)
+            {
+                float x0 = float.MaxValue, z0 = float.MaxValue, x1 = float.MinValue, z1 = float.MinValue;
+                foreach (var sp in Layout.Spaces)
+                {
+                    Vector3 a = Map.ToWorld(sp.Rect.xMin, sp.Rect.yMin), b = Map.ToWorld(sp.Rect.xMax, sp.Rect.yMax);
+                    x0 = Mathf.Min(x0, a.x); z0 = Mathf.Min(z0, a.z); x1 = Mathf.Max(x1, b.x); z1 = Mathf.Max(z1, b.z);
+                }
+                float pad = Mathf.Max(1, Layout.GridCell);
+                area = Rect.MinMaxRect(x0 - pad, z0 - pad, x1 + pad, z1 + pad);
+            }
+            HouseBounds.Set(area, door);
             publishedBounds = true;
         }
 
@@ -210,6 +244,7 @@ namespace HorrorTycoon.Rooms.Building
                 Destroy(root.gameObject);
             }
             root = wallsRoot = decorRoot = sitesRoot = null;
+            gridOverlay = null;
             anchors.Clear();
             glowsBySpace.Clear();
             pieces.Clear();
@@ -265,6 +300,7 @@ namespace HorrorTycoon.Rooms.Building
             if (beams.TryGetValue(index, out var ownBeams)) glows.AddRange(ownBeams);
             anchor.ConfigureVisuals(windows.TryGetValue(index, out var ownWin) ? ownWin.ToArray() : null, glows.ToArray());
             anchor.gameObject.SetActive(true);
+            PublishBounds();
 
             // Janelas novas em paredes de espaços antigos (um trecho externo que foi dividido).
             foreach (var pair in windows)
@@ -273,6 +309,41 @@ namespace HorrorTycoon.Rooms.Building
                 AnchorOf(pair.Key)?.AddVisuals(pair.Value.ToArray(), beams[pair.Key].ToArray());
             }
             return anchor;
+        }
+
+        /// <summary>
+        /// Grade do terreno no chão (set em grid): uma linha fina a cada célula e a borda do terreno mais forte.
+        /// Fica logo abaixo dos pisos (some dentro das peças montadas, aparece no terreno vazio).
+        /// </summary>
+        private void BuildGridOverlay()
+        {
+            var lineMat = FxMat(null, GridLine);
+            var borderMat = FxMat(null, GridBorder);
+            if (lineMat == null) return;
+            gridOverlay = new GameObject("Grade do set");
+            gridOverlay.transform.SetParent(root, false);
+
+            int cell = Mathf.Max(1, Layout.GridCell);
+            int w = Layout.Bounds.x, h = Layout.Bounds.y;
+            const float y = 0.012f, thin = 0.04f, thick = 0.12f;
+            for (int x = 0; x <= w; x += cell)
+            {
+                bool edge = x == 0 || x == w;
+                GridQuad(Map.ToWorld(x, h * 0.5f), new Vector2(edge ? thick : thin, h + (edge ? thick : 0f)), edge ? borderMat : lineMat, y);
+            }
+            for (int z = 0; z <= h; z += cell)
+            {
+                bool edge = z == 0 || z == h;
+                GridQuad(Map.ToWorld(w * 0.5f, z), new Vector2(w + (edge ? thick : 0f), edge ? thick : thin), edge ? borderMat : lineMat, y);
+            }
+        }
+
+        private void GridQuad(Vector3 center, Vector2 size, Material mat, float y)
+        {
+            var q = Primitive(PrimitiveType.Quad, gridOverlay.transform, "Linha", new Vector3(center.x, y, center.z),
+                new Vector3(size.x, size.y, 1f), mat, false);
+            q.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            NoShadow(q).receiveShadows = false;
         }
 
         /// <summary>Marcações de fita: uma por porta para o vazio ainda aberta.</summary>
