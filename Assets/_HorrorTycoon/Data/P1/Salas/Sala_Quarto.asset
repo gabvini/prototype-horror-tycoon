@@ -24,7 +24,7 @@ MonoBehaviour:
   required: 0
   interiorPrefab: {fileID: 0}
   draftZones: 0
-  doorSides: 0
+  doorSides: 6
   draftOnly: 0
   excludeFromDraft: 0
   furniture: 5

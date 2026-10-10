@@ -57,11 +57,13 @@ namespace HorrorTycoon.Rooms.Generation
 
         [Header("Set em grid (a casa cresce peça a peça)")]
         [Tooltip("Liga: a casa começa só com a convivência inicial (o Hall). Cada porta para o vazio, ao ser aberta, oferece " +
-                 "peças (salas, convivências, corredores) que cabem ali; a escolhida se monta e traz portas novas. " +
+                 "peças (salas, convivências, corredores) que cabem ali; a escolhida se monta, girada para encaixar, e traz as portas dela. " +
                  "O terreno é 'bounds' dividido em células de 'gridCell' m. Desligado: a casa gerada inteira (corredores + salas).")]
         public bool growByDraft;
-        [Tooltip("Lado da célula do grid em metros (o 'módulo de set'). Tamanhos das peças são arredondados para múltiplos dela.")]
-        [Min(1)] public int gridCell = 2;
+        [Tooltip("Lado da célula do grid em metros: 1 célula = 1 cômodo (como Blue Prince). Peças grandes ocupam 2 × 1 etc.")]
+        [Min(2)] public int gridCell = 6;
+        [Tooltip("Corredores extras do set em grid (formas de porta: em L, em T, cruzamento). O 'corridorDef' é o reto.")]
+        public List<RoomDef> corridorPieces = new List<RoomDef>();
         [Tooltip("Quantas peças são oferecidas a cada porta aberta.")]
         [Min(1)] public int draftOptions = 3;
 

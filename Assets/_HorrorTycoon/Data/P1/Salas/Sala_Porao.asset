@@ -17,14 +17,14 @@ MonoBehaviour:
   floorColor: {r: 0.25, g: 0.24, b: 0.28, a: 1}
   tags: []
   kind: 0
-  size: {x: 6, y: 8}
+  size: {x: 6, y: 6}
   allowRotation: 1
   weight: 1
   maxPerRun: 1
   required: 0
   interiorPrefab: {fileID: 0}
   draftZones: 0
-  doorSides: 0
+  doorSides: 4
   draftOnly: 0
   excludeFromDraft: 0
   furniture: 6

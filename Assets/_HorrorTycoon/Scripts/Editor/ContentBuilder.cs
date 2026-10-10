@@ -447,11 +447,11 @@ namespace HorrorTycoon.EditorTools
             EnsureFolder(DataRoot, "Geracao");
 
             // Tamanhos (metros) na ordem de 'salas': Cozinha, Sala de estar, Banheiro, Quarto, Porão, Sótão.
-            // Escala de cinema ×1,5 (08/10/2026), em múltiplos da célula de 2 m do set em grid (10/10/2026).
+            // Set em grid (10/10/2026): 1 célula = 1 cômodo de 6 × 6 m; a Sala de estar ocupa 2 × 1.
             var sizes = new[]
             {
-                new Vector2Int(6, 8), new Vector2Int(8, 6), new Vector2Int(4, 4),
-                new Vector2Int(6, 6), new Vector2Int(6, 8), new Vector2Int(6, 6),
+                new Vector2Int(6, 6), new Vector2Int(12, 6), new Vector2Int(6, 6),
+                new Vector2Int(6, 6), new Vector2Int(6, 6), new Vector2Int(6, 6),
             };
             for (int i = 0; i < salas.Count && i < sizes.Length; i++)
             {
@@ -476,20 +476,21 @@ namespace HorrorTycoon.EditorTools
             // Convivências: atores param aqui, sem encontro. O Hall é o espaço INICIAL (obrigatório).
             // ("Sala de estar" já existe como SALA com encontros no P0, então a convivência inicial é o Hall.)
             RoomDef hall = Social("HallDeEntrada", "Hall de entrada", "A porta da frente dá aqui. O elenco se reúne antes de cada cena.",
-                new Color(0.4f, 0.36f, 0.33f), new Vector2Int(8, 6), true, FurnitureStyle.Hall, warm);
+                new Color(0.4f, 0.36f, 0.33f), new Vector2Int(6, 6), true, FurnitureStyle.Hall, warm);
             RoomDef jantar = Social("SalaDeJantar", "Sala de jantar", "Uma mesa posta para ninguém.",
                 new Color(0.42f, 0.33f, 0.28f), new Vector2Int(6, 6), false, FurnitureStyle.Dining, warm);
             RoomDef tv = Social("SalaDeTV", "Sala de TV", "O sofá afundado e a TV chiando.",
-                new Color(0.34f, 0.36f, 0.42f), new Vector2Int(8, 6), false, FurnitureStyle.Living, new Color(0.7f, 0.8f, 1f));
+                new Color(0.34f, 0.36f, 0.42f), new Vector2Int(12, 6), false, FurnitureStyle.Living, new Color(0.7f, 0.8f, 1f));
 
             var gen = Make<HouseGenDef>("Geracao/Casa_Padrao", g =>
             {
                 g.corridorDef = corredor;
                 g.socialPool = new List<RoomDef> { hall, jantar, tv };
-                // Set em grid: as peças nascem quando um ator abre uma porta para o vazio. Terreno 24 × 20 células de 2 m.
+                // Set em grid: as peças nascem quando um ator abre uma porta para o vazio. Terreno 7 × 6 cômodos de 6 m.
+                // (Corredores em L/T/cruzamento: assets Sala_CorredorL/T e Sala_Cruzamento, ligados no Casa_Padrao.)
                 g.growByDraft = true;
-                g.gridCell = 2;
-                g.bounds = new Vector2Int(48, 40);
+                g.gridCell = 6;
+                g.bounds = new Vector2Int(42, 36);
                 g.doorCornerMargin = 0.4f;
             });
 

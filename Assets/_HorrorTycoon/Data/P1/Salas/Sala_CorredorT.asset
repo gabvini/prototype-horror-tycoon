@@ -10,27 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eb4311d29770a624a9e442068064a60f, type: 3}
-  m_Name: Conv_HallDeEntrada
+  m_Name: Sala_CorredorT
   m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Rooms.RoomDef
-  displayName: Hall de entrada
-  description: "A porta da frente d\xE1 aqui. O elenco se re\xFAne antes de cada
-    cena."
-  floorColor: {r: 0.4, g: 0.36, b: 0.33, a: 1}
+  displayName: Corredor em T
+  description: "Tr\xEAs caminhos. Algu\xE9m vai ter que escolher."
+  floorColor: {r: 0.3, g: 0.27, b: 0.25, a: 1}
   tags: []
-  kind: 1
+  kind: 2
   size: {x: 6, y: 6}
   allowRotation: 1
   weight: 1
   maxPerRun: 1
-  required: 1
+  required: 0
   interiorPrefab: {fileID: 0}
   draftZones: 0
-  doorSides: 0
+  doorSides: 14
   draftOnly: 0
   excludeFromDraft: 0
-  furniture: 8
+  furniture: 1
   lightColor: {r: 1, g: 0.8, b: 0.55, a: 1}
-  flickeringLight: 0
+  flickeringLight: 1
   hints: []
   encounters: []
   stagePayoffs: []
@@ -39,7 +38,3 @@ MonoBehaviour:
     requiredTool: {fileID: 0}
     reward: {fileID: 0}
     text: 
-  pavorPerScene: 0
-  plots: []
-  startsSealed: 0
-  sealedText: 

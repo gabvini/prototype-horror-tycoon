@@ -26,6 +26,8 @@ namespace HorrorTycoon.Rooms.Generation
         public RectInt Rect { get; internal set; }
         /// <summary>True se o tamanho foi girado 90° em relação a Def.Size.</summary>
         public bool Rotated { get; internal set; }
+        /// <summary>Set em grid: giro da peça em quartos de volta no sentido horário (0–3). Decide de que lados ficam as portas.</summary>
+        public int Quarter { get; internal set; }
         /// <summary>Espaço ao qual ele foi preso na geração (-1 = o inicial).</summary>
         public int ParentIndex { get; internal set; } = -1;
         /// <summary>Sala que abre para dentro de outra sala (só se chega passando pela sala-mãe).</summary>

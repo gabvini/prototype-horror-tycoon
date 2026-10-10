@@ -3,22 +3,35 @@
 > M1 do `Docs/Design/GDD_Base.md` (10/10/2026). Substitui a "casa por escolha" de 09/10 (que partia de corredores gerados).
 > Liga com `HouseGenDef.growByDraft` (ligado no `Casa_Padrao`). Desligado = casa gerada inteira como antes. P0 não muda.
 
-## 0. Medidas
+## 0. Tabuleiro (como Blue Prince)
 
-- **Célula = 2 m** (`HouseGenDef.gridCell`). Terreno do `Casa_Padrao`: **48 × 40 m = 24 × 20 células** (`bounds`).
-- Tamanhos das peças são arredondados para múltiplos da célula. Conteúdo atual: Hall 4×3, Sala de jantar 3×3, Sala de TV 4×3,
-  Cozinha 3×4, Sala de estar 4×3, **Banheiro 2×2** (era 5×5 m), Quarto 3×3, Porão 3×4, Sótão 3×3, **Corredor 1×4** (2×8 m).
-- Portas ficam **no meio de uma célula**; peças começam em múltiplos da célula. Vão 1,2 m, margem 0,4 m.
+- **1 célula = 1 cômodo de 6 × 6 m** (`HouseGenDef.gridCell`). Terreno do `Casa_Padrao`: **7 × 6 células** (42 × 36 m, `bounds`).
+- Quase tudo ocupa **1 × 1**; Sala de estar e Sala de TV ocupam **2 × 1** (12 × 6 m).
+- **Portas sempre no meio do lado de uma célula**: peças vizinhas se encaixam sem sobrar espaço.
+- **Lados com porta** (`RoomDef.doorSides`, sem giro; "sul" = a entrada). A peça é **girada** para uma porta dela cair na porta aberta.
+  Entre os giros possíveis, o jogo escolhe o que deixa mais portas dando para células livres.
+
+| Peça | Portas (sem giro) | Na prática |
+|---|---|---|
+| Hall (começo) | todas | 3 portas para o vazio + a da frente |
+| Corredor reto / em L / em T / Cruzamento | N+S / S+L / S+L+O / todas | +1 / +1 / +2 / +3 portas novas |
+| Banheiro, Porão | S | beco sem saída |
+| Quarto | S+L | +1 |
+| Sótão | S+N | +1 |
+| Cozinha | S+N+L | +2 |
+| Sala de jantar | S+L+O | +2 |
+| Sala de estar, Sala de TV (2 × 1) | todas | +3 |
 
 ## 1. Como joga
 
-1. A run começa **só com o Hall**, na frente do terreno, com a porta da frente e uma **porta fechada** em cada lado livre
-   (norte, leste, oeste). Do lado de fora de cada uma, uma **marcação de fita no chão**. A **grade do set** aparece no terreno (tecla **G** liga/desliga).
+1. A run começa **só com o Hall**, na célula do meio da fileira da frente, com a porta da frente e uma **porta fechada** em cada
+   outro lado. Do lado de fora de cada uma, uma **marcação de fita no chão**. A **grade do set** (uma linha a cada 6 m) aparece no
+   terreno; tecla **G** liga/desliga.
 2. Clique na porta (ou na fita) → card **PORTA FECHADA** → **QUEM VAI?** (custa 1 cena, `exploreActionCost`).
 3. Tela **MONTE O SET**: até `draftOptions` (3) **peças** que cabem ali: salas, convivências e corredores (no máximo 1 corredor por oferta).
-   Cada carta mostra o tipo, o tamanho em células, a descrição e etiquetas. "voltar" desiste sem gastar nada.
-4. A peça **se monta** (piso, paredes de fora subindo, móveis caindo, lâmpada acendendo) e ganha **portas novas** (uma por lado, na
-   célula mais ao meio). Uma porta que daria em algo já montado vira **passagem direta** entre os dois.
+   Cada carta mostra o tipo, quantas células ocupa e **quantas portas novas abre** ("+2 portas novas" / "Beco sem saída").
+4. A peça **se monta** e as portas dela viram portas para o vazio. Porta que dá numa peça vizinha: vira passagem se a vizinha tiver
+   porta ali; senão, parede.
 5. Depois:
    - **Sala**: o ator entra e explora (encontro, plots, ferramentas);
    - **Convivência**: o ator vai para lá; a cena passa (tique da casa);
@@ -41,9 +54,10 @@
 
 | Arquivo | O quê |
 |---|---|
-| `Rooms/Generation/HouseDraft.cs` | C# puro. `StartLayout` (só o Hall + portas), `AddSites` (portas de uma peça), `TryPlace` (alinhado ao grid), `Eligible`, `RollOffer`, `AddRoom`, `DraftRules`. |
+| `Rooms/Generation/HouseDraft.cs` | C# puro. `StartLayout` (só o Hall + portas), `AddSites` / `DoorPos` / `SideHasDoor` (portas por lado com giro), `TryPlace` (célula + giro), `Eligible`, `RollOffer`, `AddRoom`, `DraftRules`. |
 | `Rooms/Generation/HouseLayout.cs` | `HouseDoorSite` + `DoorSiteState`; `Sites`, `GrowsByDraft`; `HouseWall.SiteIndices`. O cálculo das paredes (`ComputeWalls`) mudou do gerador para cá (a casa recalcula a cada sala) e `IsFree`. |
-| `Rooms/Generation/HouseGenDef.cs` | `growByDraft`, `gridCell`, `draftOptions`. |
+| `Rooms/Generation/HouseGenDef.cs` | `growByDraft`, `gridCell`, `corridorPieces`, `draftOptions`. |
+| `Data/P1/Salas/Sala_CorredorL`, `Sala_CorredorT`, `Sala_Cruzamento` | **Novos**: corredores com outras formas de porta. |
 | `Run/FilmRun.Draft.cs` | **Novo**. `DoorSites`, `SiteHasRoom`, `CanDraft`, `DraftCost`, `OpenDraft` (oferta), `Draft` (sala nasce + ator entra), evento `RoomAdded`. Fluxo aleatório próprio. |
 | `Run/FilmRun.cs` | `growByDraft` → `HouseDraft.StartLayout` (sem gerador); `Map` é refeito a cada peça; `Move` interno sem registrar ação. |
 | `Run/FilmRun.Build.cs` | Plot que libera sala lacrada ainda não montada: ela entra na oferta. |
@@ -61,16 +75,16 @@
 
 ## 4. Números (400 runs simuladas, Ato 1 = 8 cenas, sempre abrindo portas)
 
-- ~8 peças montadas no Ato 1 (9 espaços com o Hall): 49% salas, 31% corredores, 20% convivências.
-- Ofertas: 85% com 3 opções, 5% com 2, 10% com 1 (o pool de salas acaba: 5 salas sem lacre).
-- Sobram ~12 portas abertas com peça possível no fim: espaço de sobra no terreno.
+- ~8 peças montadas no Ato 1: 49% salas, 32% corredores, 19% convivências.
+- Ofertas: 95% com 3 opções, 4% com 2, 1% com 1.
+- No fim do Ato 1 sobram ~5,7 portas abertas por casa; ~0,8 porta por casa virou parede (beco).
 - 0 plantas inválidas, replay idêntico em todas.
 
 ## 5. Como testar no Unity
 
 1. Abrir o projeto (compila sozinho). **Test Runner > EditMode**: os 54 antigos + 7 de `HouseDraftTests`.
-2. **Reconstruir a cena**: menu **Horror Tycoon > Construir Cena Casa Procedural** (o terreno cresceu para 48 × 40 m; o cenário em volta
-   precisa abrir espaço). Depois Play.
+2. **Reconstruir a cena**: menu **Horror Tycoon > Construir Cena Casa Procedural** (o terreno mudou para 42 × 36 m; o cenário em volta
+   precisa se ajustar). Depois Play.
 3. Conferir:
    - [ ] Começa só com o Hall; 3 portas fechadas com fita em X; marcação de fita no chão; grade do set no terreno (G esconde).
    - [ ] Passar o mouse na porta/fita acende a fita; clicar abre o card PORTA FECHADA.
@@ -85,7 +99,8 @@
 
 ## 6. Limitações / próximos passos
 
-- Uma porta por lado em cada peça (na célula do meio); os lados com porta vêm do `doorSides` do RoomDef.
+- Uma porta por lado em cada peça (na 1ª célula do meio, nas peças 2 × 1).
+- O corredor ocupa a célula inteira (6 × 6 m) e por enquanto parece uma sala vazia com passadeira; falta arte de corredor estreito.
 - Áreas externas (floresta, cemitério) ainda não existem como peças.
 - O NavMesh é recalculado inteiro a cada sala (`BuildNavMesh`): pode dar um engasgo pequeno.
 - Sem som nem poeira na montagem.

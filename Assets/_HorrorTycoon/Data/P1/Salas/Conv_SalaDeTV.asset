@@ -17,7 +17,7 @@ MonoBehaviour:
   floorColor: {r: 0.34, g: 0.36, b: 0.42, a: 1}
   tags: []
   kind: 1
-  size: {x: 8, y: 6}
+  size: {x: 12, y: 6}
   allowRotation: 1
   weight: 1
   maxPerRun: 1

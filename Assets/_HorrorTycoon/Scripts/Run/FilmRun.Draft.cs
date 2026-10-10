@@ -60,6 +60,8 @@ namespace HorrorTycoon.Run
             draftPool = new List<RoomDef>(pool);
             foreach (var social in gen.socialPool) if (social != null && !draftPool.Contains(social)) draftPool.Add(social);
             if (gen.corridorDef != null && !draftPool.Contains(gen.corridorDef)) draftPool.Add(gen.corridorDef);
+            foreach (var corridorPiece in gen.corridorPieces)
+                if (corridorPiece != null && !draftPool.Contains(corridorPiece)) draftPool.Add(corridorPiece);
             draftRules = DraftRules.From(gen);
             draftOptionCount = Math.Max(1, gen.draftOptions);
         }

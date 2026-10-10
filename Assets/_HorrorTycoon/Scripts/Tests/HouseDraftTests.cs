@@ -14,14 +14,14 @@ namespace HorrorTycoon.Tests
 {
     /// <summary>
     /// Set em grid (HouseGenDef.growByDraft): começo só com o Hall + portas para o vazio, oferta de peças, peça nova na planta
-    /// (alinhada ao grid, com portas novas), FilmRun.Draft e replay. Sem cena. Medidas em células de 2 m.
+    /// (1 célula = 1 cômodo de 6 m, girada para encaixar, com as portas dela), FilmRun.Draft e replay. Sem cena.
     /// </summary>
     public class HouseDraftTests
     {
         private EncounterDef encNada;
         private GameRulesDef rules;
         private FilmFormatDef format;
-        private RoomDef corridor, hall, jantar, tv, porao;
+        private RoomDef corridor, corridorL, corridorT, cross, hall, jantar, tv, porao, banheiro;
         private List<RoomDef> pool;
         private List<ActorDef> actors;
 
@@ -33,20 +33,25 @@ namespace HorrorTycoon.Tests
             rules = ScriptableObject.CreateInstance<GameRulesDef>();
             format = ScriptableObject.CreateInstance<FilmFormatDef>();
 
-            corridor = MakeDef("Corredor", SpaceKind.Corridor, new Vector2Int(2, 8), false);
-            hall = MakeDef("Hall", SpaceKind.Social, new Vector2Int(8, 6), true);
-            jantar = MakeDef("Jantar", SpaceKind.Social, new Vector2Int(6, 6), false);
-            tv = MakeDef("TV", SpaceKind.Social, new Vector2Int(8, 6), false);
-            porao = MakeDef("Porão", SpaceKind.Room, new Vector2Int(6, 8), false);
+            // N = 1, L = 2, S = 4, O = 8 (sem giro; "sul" = a entrada). 0 = os 4 lados.
+            corridor = MakeDef("Corredor", SpaceKind.Corridor, new Vector2Int(6, 6), false, DoorSides.North | DoorSides.South);
+            corridorL = MakeDef("Corredor em L", SpaceKind.Corridor, new Vector2Int(6, 6), false, DoorSides.South | DoorSides.East);
+            corridorT = MakeDef("Corredor em T", SpaceKind.Corridor, new Vector2Int(6, 6), false, DoorSides.South | DoorSides.East | DoorSides.West);
+            cross = MakeDef("Cruzamento", SpaceKind.Corridor, new Vector2Int(6, 6), false);
+            hall = MakeDef("Hall", SpaceKind.Social, new Vector2Int(6, 6), true);
+            jantar = MakeDef("Jantar", SpaceKind.Social, new Vector2Int(6, 6), false, DoorSides.South | DoorSides.East | DoorSides.West);
+            tv = MakeDef("TV", SpaceKind.Social, new Vector2Int(12, 6), false);
+            porao = MakeDef("Porão", SpaceKind.Room, new Vector2Int(6, 6), false, DoorSides.South);
             porao.SetupBuild(0, null, true, "Trancado.");
+            banheiro = MakeDef("Banheiro", SpaceKind.Room, new Vector2Int(6, 6), false, DoorSides.South);
             pool = new List<RoomDef>
             {
-                MakeDef("Cozinha", SpaceKind.Room, new Vector2Int(6, 8), false),
-                MakeDef("Sala de estar", SpaceKind.Room, new Vector2Int(8, 6), false),
-                MakeDef("Banheiro", SpaceKind.Room, new Vector2Int(4, 4), false),
-                MakeDef("Quarto", SpaceKind.Room, new Vector2Int(6, 6), false),
+                MakeDef("Cozinha", SpaceKind.Room, new Vector2Int(6, 6), false, DoorSides.South | DoorSides.North | DoorSides.East),
+                MakeDef("Sala de estar", SpaceKind.Room, new Vector2Int(12, 6), false),
+                banheiro,
+                MakeDef("Quarto", SpaceKind.Room, new Vector2Int(6, 6), false, DoorSides.South | DoorSides.East),
                 porao,
-                MakeDef("Sótão", SpaceKind.Room, new Vector2Int(6, 6), false),
+                MakeDef("Sótão", SpaceKind.Room, new Vector2Int(6, 6), false, DoorSides.South | DoorSides.North),
             };
 
             actors = new List<ActorDef>();
@@ -58,12 +63,13 @@ namespace HorrorTycoon.Tests
             }
         }
 
-        private RoomDef MakeDef(string name, SpaceKind kind, Vector2Int size, bool required)
+        private RoomDef MakeDef(string name, SpaceKind kind, Vector2Int size, bool required, DoorSides doors = DoorSides.None)
         {
             var r = ScriptableObject.CreateInstance<RoomDef>();
             var encounters = new List<RoomDef.WeightedEncounter> { new RoomDef.WeightedEncounter { encounter = encNada, weight = 1 } };
             r.Setup(name, "", Color.gray, new List<string>(), encounters, new List<PayoffDef>(), null);
             r.SetupGen(kind, size, 1f, 1, required);
+            r.SetupDraft(HouseZone.None, doors);
             return r;
         }
 
@@ -73,8 +79,9 @@ namespace HorrorTycoon.Tests
             g.corridorDef = corridor;
             g.socialPool = new List<RoomDef> { hall, jantar, tv };
             g.growByDraft = true;
-            g.gridCell = 2;
-            g.bounds = new Vector2Int(48, 40);
+            g.gridCell = 6;
+            g.bounds = new Vector2Int(42, 36);
+            g.corridorPieces = new List<RoomDef> { corridorL, corridorT, cross };
             g.doorCornerMargin = 0.4f;
             return g;
         }
@@ -110,7 +117,7 @@ namespace HorrorTycoon.Tests
                 Assert.IsTrue(l.Validate(out string error), $"seed {seed}: {error}");
                 Assert.AreEqual(1, l.Spaces.Count, "começa só com o Hall");
                 Assert.AreSame(hall, l.Spaces[0].Def);
-                Assert.AreEqual(0, l.Spaces[0].Rect.yMin, "o Hall fica na frente do terreno");
+                Assert.AreEqual(new RectInt(18, 0, 6, 6), l.Spaces[0].Rect, "o Hall ocupa a célula do meio da fileira da frente");
                 Assert.AreEqual(3, l.Sites.Count, "portas para o vazio nos lados norte, leste e oeste");
                 Assert.IsTrue(run.Actors.All(a => a.RoomIndex == 0), "o elenco começa no Hall");
                 foreach (var s in l.Sites) AssertSiteOnWall(l, s, seed);
@@ -125,7 +132,7 @@ namespace HorrorTycoon.Tests
             Assert.IsTrue(HouseWorldMap.Gaps(l, walls[0]).Any(g => g.Site == s.Index && Mathf.Abs(g.To - g.From - s.Width) < 0.01f),
                 $"seed {seed}: vão da porta {s.Index}");
             float along = s.HorizontalWall ? s.Position.x : s.Position.y;
-            Assert.AreEqual(1f, Mathf.Repeat(along, 2f), 0.001f, $"seed {seed}: porta {s.Index} fora do meio da célula");
+            Assert.AreEqual(3f, Mathf.Repeat(along, 6f), 0.001f, $"seed {seed}: porta {s.Index} fora do meio da célula");
         }
 
         // ==================================================================== Oferta
@@ -161,7 +168,7 @@ namespace HorrorTycoon.Tests
             var l = run.Layout;
             foreach (var s in l.Sites)
             {
-                foreach (var def in pool.Concat(new[] { corridor, jantar, tv }))
+                foreach (var def in pool.Concat(new[] { corridor, corridorL, corridorT, cross, jantar, tv }))
                 {
                     if (!HouseDraft.TryPlace(l, s, def, new DraftRules(), out var p)) continue;
                     RectInt host = l.Spaces[s.Host].Rect;
@@ -170,8 +177,9 @@ namespace HorrorTycoon.Tests
                     float lo = s.HorizontalWall ? from.x : from.y, hi = s.HorizontalWall ? to.x : to.y;
                     Assert.LessOrEqual(lo, along - s.Width * 0.5f - 0.4f + 0.001f);
                     Assert.GreaterOrEqual(hi, along + s.Width * 0.5f + 0.4f - 0.001f);
-                    Assert.AreEqual(0, p.Rect.xMin % 2, "alinhada ao grid");
-                    Assert.AreEqual(0, p.Rect.yMin % 2, "alinhada ao grid");
+                    Assert.AreEqual(0, p.Rect.xMin % 6, "alinhada ao grid");
+                    Assert.AreEqual(0, p.Rect.yMin % 6, "alinhada ao grid");
+                    Assert.IsTrue(HouseDraft.SideHasDoor(def, -s.Outward, p.Quarter), "girada para ter porta do lado da entrada");
                     Vector2Int size = p.Rotated ? new Vector2Int(def.Size.y, def.Size.x) : def.Size;
                     Assert.AreEqual(size, new Vector2Int(p.Rect.width, p.Rect.height));
                 }
@@ -206,7 +214,7 @@ namespace HorrorTycoon.Tests
                     Assert.AreEqual(before + 1, run.Rooms.Count, $"seed {seed}");
                     Assert.AreSame(def, run.Rooms[before].Def);
                     var rect = l.Spaces[before].Rect;
-                    Assert.IsTrue(rect.xMin % 2 == 0 && rect.yMin % 2 == 0 && rect.width % 2 == 0 && rect.height % 2 == 0, $"seed {seed}: fora do grid {rect}");
+                    Assert.IsTrue(rect.xMin % 6 == 0 && rect.yMin % 6 == 0 && rect.width % 6 == 0 && rect.height % 6 == 0, $"seed {seed}: fora do grid {rect}");
                     if (def.Kind == SpaceKind.Room)
                     {
                         roomsBuilt++;
@@ -275,6 +283,52 @@ namespace HorrorTycoon.Tests
                 Assert.AreEqual(Signature(run.Layout), Signature(again.Layout), $"seed {seed}");
                 Assert.AreEqual(run.TotalScore, again.TotalScore, $"seed {seed}");
             }
+        }
+
+        [Test]
+        public void Portas_SoNosLadosDaPeca_GiradaParaEncaixar()
+        {
+            // Banheiro só tem porta no "sul" (a entrada): girado para a porta dar no host e sem portas novas.
+            for (int seed = 1; seed <= 60; seed++)
+            {
+                var run = NewRun(seed);
+                var l = run.Layout;
+                var hallRect = l.Spaces[0].Rect;
+                int site = l.Sites.First(x => x.Outward == new Vector2Int(1, 0)).Index; // porta leste do Hall
+                Assert.IsTrue(HouseDraft.TryPlace(l, l.Sites[site], banheiro, new DraftRules(), out var p));
+                Assert.AreEqual(new RectInt(hallRect.xMax, 0, 6, 6), p.Rect);
+                Assert.AreEqual(1, p.Quarter, "sul girado 90° horário = oeste (encosta no Hall)");
+                int before = l.Sites.Count;
+                HouseDraft.AddRoom(l, l.Sites[site], banheiro, p, new DraftRules());
+                Assert.AreEqual(before, l.Sites.Count, "banheiro é beco sem saída: nenhuma porta nova");
+            }
+        }
+
+        [Test]
+        public void Portas_DeVizinhas_ViramPassagemOuParede()
+        {
+            // Hall no meio; Cruzamento ao leste e ao norte. O cruzamento do norte tem porta para o sul (o Hall) e leste;
+            // a porta para o vazio leste dele cai na célula acima do cruzamento do leste, que fica livre.
+            var run = NewRun(4);
+            var l = run.Layout;
+            var rules = new DraftRules();
+            var east = l.Sites.First(x => x.Outward == new Vector2Int(1, 0));
+            HouseDraft.TryPlace(l, east, cross, rules, out var pe);
+            int iEast = HouseDraft.AddRoom(l, east, cross, pe, rules);
+            var north = l.Sites.First(x => x.Host == 0 && x.Outward == new Vector2Int(0, 1));
+            HouseDraft.TryPlace(l, north, cross, rules, out var pn);
+            int iNorth = HouseDraft.AddRoom(l, north, cross, pn, rules);
+            // Porta norte do cruzamento leste e porta leste do cruzamento norte dão na mesma célula (diagonal do Hall):
+            // as duas são portas para o vazio abertas.
+            var a = l.Sites.First(x => x.Host == iEast && x.Outward == new Vector2Int(0, 1));
+            var b = l.Sites.First(x => x.Host == iNorth && x.Outward == new Vector2Int(1, 0));
+            Assert.IsTrue(a.IsOpen && b.IsOpen);
+            // Um Cruzamento ali liga os dois lados (vira passagem dos dois).
+            HouseDraft.TryPlace(l, a, cross, rules, out var pc);
+            int iCorner = HouseDraft.AddRoom(l, a, cross, pc, rules);
+            Assert.AreEqual(DoorSiteState.Built, b.State);
+            Assert.AreEqual(iCorner, b.Space);
+            Assert.IsTrue(l.Validate(out string error), error);
         }
 
         [Test]

@@ -180,7 +180,17 @@ namespace HorrorTycoon.UI
                 string kind = room.Kind == Rooms.SpaceKind.Corridor ? "Corredor · só passagem, abre portas"
                             : room.Kind == Rooms.SpaceKind.Social ? "Convivência · sem encontro" : "Sala · explorar";
                 Ui.Lbl(kind, "t-label", card);
-                Ui.Lbl($"{rect.width / cell} × {rect.height / cell} células ({rect.width} × {rect.height} m)", "t-label t-dim", card);
+                Ui.Lbl($"{rect.width / cell} × {rect.height / cell} célula{(rect.width / cell * (rect.height / cell) == 1 ? "" : "s")}", "t-label t-dim", card);
+                // Portas que a peça abre (fora a de entrada), já girada como vai nascer.
+                int doors = 0;
+                var site = c.Run.DoorSite(offer.Site);
+                foreach (var side in new[] { new Vector2Int(0, 1), new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(-1, 0) })
+                {
+                    if (site != null && side == -site.Outward) continue;
+                    if (Rooms.Generation.HouseDraft.SideHasDoor(room, side, offer.Placements[i].Quarter)) doors++;
+                }
+                Ui.Lbl(doors == 0 ? "Beco sem saída" : $"+{doors} porta{(doors == 1 ? "" : "s")} nova{(doors == 1 ? "" : "s")}",
+                    "t-label " + (doors == 0 ? "fg-alerta" : "fg-ok"), card);
                 if (!string.IsNullOrEmpty(room.Description)) Ui.Lbl(Highlight(room.Description), "t-body pick-desc", card);
                 var tags = new List<string>();
                 if (room.StagePayoffs.Count > 0) tags.Add("Palco");

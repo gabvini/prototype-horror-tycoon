@@ -9,15 +9,17 @@ namespace HorrorTycoon.Rooms.Generation
     public struct DraftPlacement
     {
         public RectInt Rect;
-        /// <summary>True se o tamanho ficou girado 90° em relação a RoomDef.Size.</summary>
-        public bool Rotated;
+        /// <summary>Giro da peça em quartos de volta no sentido horário (0–3).</summary>
+        public int Quarter;
+        /// <summary>True se o tamanho ficou girado 90° em relação a RoomDef.Size (giro ímpar).</summary>
+        public bool Rotated => (Quarter & 1) == 1;
     }
 
     /// <summary>Medidas do set em grid (vêm do HouseGenDef).</summary>
     public sealed class DraftRules
     {
-        /// <summary>Lado da célula do grid em metros (o "módulo de set").</summary>
-        public int Cell = 2;
+        /// <summary>Lado da célula do grid em metros: 1 célula = 1 cômodo (como Blue Prince).</summary>
+        public int Cell = 6;
         public float DoorWidth = 1.2f;
         /// <summary>Distância mínima do vão até o canto (limitada pelo que cabe numa célula).</summary>
         public float CornerMargin = 0.4f;
@@ -27,7 +29,7 @@ namespace HorrorTycoon.Rooms.Generation
 
         public static DraftRules From(HouseGenDef def) => new DraftRules
         {
-            Cell = Mathf.Max(1, def.gridCell),
+            Cell = Mathf.Max(2, def.gridCell),
             DoorWidth = def.doorWidth,
             CornerMargin = def.doorCornerMargin,
             DoorCost = def.doorCost,
@@ -35,15 +37,17 @@ namespace HorrorTycoon.Rooms.Generation
     }
 
     /// <summary>
-    /// SET EM GRID (casa por escolha): a casa cresce peça a peça, como Blue Prince, num terreno dividido em células
-    /// (HouseGenDef.gridCell, 2 m). C# puro.
+    /// SET EM GRID, como Blue Prince: o terreno é um tabuleiro de células e **1 célula = 1 cômodo** (HouseGenDef.gridCell, 6 m).
+    /// A maioria das peças ocupa 1 × 1; peças grandes, 2 × 1 (ou mais). C# puro.
     ///
-    ///   1. StartLayout: só a convivência inicial (o Hall), colada na frente do terreno, com a porta da frente e uma
-    ///      PORTA PARA O VAZIO (HouseDoorSite) em cada lado livre.
-    ///   2. Ao abrir uma porta, o jogo oferece peças que CABEM ali (TryPlace / Eligible): salas, convivências e corredores.
-    ///   3. AddRoom: a peça entra na planta colada à porta e ganha portas novas nos lados dela (AddSites). Portas que
-    ///      dariam em algo já montado viram ligação direta; portas para o vazio cobertas pela peça nova levam a ela.
-    /// Tudo alinhado ao grid: retângulos começam em múltiplos da célula e as portas ficam no meio de uma célula.
+    ///   - PORTAS: sempre no meio do lado de uma célula. Cada peça diz em que lados tem porta (RoomDef.doorSides, sem giro;
+    ///     "sul" = a entrada) e é GIRADA (0/90/180/270°) para uma porta dela encaixar na porta por onde se entrou.
+    ///     Lado com mais de uma célula: a porta fica na 1ª célula do meio.
+    ///   1. StartLayout: só o Hall, na célula do meio da fileira da frente, com a porta da frente e portas para o vazio.
+    ///   2. Abrir uma porta oferece peças que CABEM ali (TryPlace / Eligible): salas, convivências e corredores
+    ///      (reto, em L, em T, cruzamento: a forma das portas é a estratégia).
+    ///   3. AddRoom: a peça entra no tabuleiro. Cada porta dela vira porta para o vazio (se a célula do lado estiver livre).
+    ///      Portas para o vazio de outras peças que dão nela: viram passagem se ela tiver porta ali; senão, parede.
     /// </summary>
     public static class HouseDraft
     {
@@ -68,7 +72,8 @@ namespace HorrorTycoon.Rooms.Generation
             Vector2Int size = new Vector2Int(Snap(startDef.Size.x, cell), Snap(startDef.Size.y, cell));
             size.x = Mathf.Min(size.x, layout.Bounds.x);
             size.y = Mathf.Min(size.y, layout.Bounds.y);
-            int x = Snap((layout.Bounds.x - size.x) / 2, cell, false);
+            int cols = layout.Bounds.x / cell;
+            int x = Mathf.Clamp((cols - size.x / cell + 1) / 2, 0, Mathf.Max(0, cols - size.x / cell)) * cell;
             var rect = new RectInt(x, 0, size.x, size.y);
             layout.spaces.Add(new HouseSpace { Index = 0, Kind = SpaceKind.Social, Def = startDef, Rect = rect, ParentIndex = -1 });
             layout.StartSpaceIndex = 0;
@@ -140,61 +145,48 @@ namespace HorrorTycoon.Rooms.Generation
         private static readonly Vector2Int[] Sides = { new Vector2Int(0, 1), new Vector2Int(1, 0), new Vector2Int(0, -1), new Vector2Int(-1, 0) };
 
         /// <summary>
-        /// Uma porta por lado da peça (nos lados com porta no RoomDef, já com o giro), na célula mais ao meio que dá:
-        /// para o vazio vira porta para o vazio; para algo já montado vira ligação direta (se ainda não houver ligação
-        /// entre os dois). O lado por onde a peça foi aberta e o lado da porta da frente ficam de fora.
+        /// Portas novas da peça: em cada lado com porta (RoomDef.doorSides já girado) que ainda não tem ligação nem porta para o
+        /// vazio, uma porta na célula do meio. Célula do lado livre e dentro do terreno = PORTA PARA O VAZIO; ocupada = parede
+        /// (se a vizinha tivesse porta ali, ela já era uma porta para o vazio, resolvida em AddRoom).
         /// </summary>
         public static void AddSites(HouseLayout layout, int space, DraftRules rules)
         {
             var s = layout.spaces[space];
-            RectInt r = s.Rect;
             int cell = rules.Cell;
             foreach (var o in Sides)
             {
-                if (s.Def != null && !SideHasDoor(s.Def, o, s.Rotated)) continue;
+                if (s.Def != null && !SideHasDoor(s.Def, o, s.Quarter)) continue;
                 if (HasConnectionOnSide(layout, space, o)) continue;
 
-                bool alongX = o.y != 0;
-                int lo = alongX ? r.xMin : r.yMin, hi = alongX ? r.xMax : r.yMax;
-                int line = o.y > 0 ? r.yMax : o.y < 0 ? r.yMin : o.x > 0 ? r.xMax : r.xMin;
-                foreach (float along in CellCenters(lo, hi, cell))
+                Vector2 pos = DoorPos(s.Rect, o, cell);
+                var landing = LandingRect(pos, o.y != 0, o, cell);
+                if (landing.xMin < 0 || landing.yMin < 0 || landing.xMax > layout.Bounds.x || landing.yMax > layout.Bounds.y) continue;
+                if (OccupantOf(layout, landing) >= 0) continue;
+                if (SiteAt(layout, pos, o.y != 0)) continue;
+                layout.sites.Add(new HouseDoorSite
                 {
-                    var pos = alongX ? new Vector2(along, line) : new Vector2(line, along);
-                    var landing = LandingRect(pos, alongX, o, cell);
-                    if (landing.xMin < 0 || landing.yMin < 0 || landing.xMax > layout.Bounds.x || landing.yMax > layout.Bounds.y) continue;
-
-                    int neighbor = OccupantOf(layout, landing);
-                    if (neighbor == space) continue;
-                    if (neighbor >= 0)
-                    {
-                        if (Connected(layout, space, neighbor)) break;
-                        int c = layout.connections.Count;
-                        layout.connections.Add(new HouseConnection
-                        {
-                            Index = c, A = Mathf.Min(space, neighbor), B = Mathf.Max(space, neighbor), Type = ConnectionType.Door,
-                            Position = pos, HorizontalWall = alongX, Width = rules.DoorWidth, Cost = rules.DoorCost,
-                        });
-                        break;
-                    }
-
-                    if (SiteAt(layout, pos, alongX)) break;
-                    layout.sites.Add(new HouseDoorSite
-                    {
-                        Index = layout.sites.Count, Host = space, Position = pos, HorizontalWall = alongX, Width = rules.DoorWidth,
-                        Outward = o, Zone = ZoneAt(pos.y, layout.Bounds.y),
-                    });
-                    break;
-                }
+                    Index = layout.sites.Count, Host = space, Position = pos, HorizontalWall = o.y != 0, Width = rules.DoorWidth,
+                    Outward = o, Zone = ZoneAt(pos.y, layout.Bounds.y),
+                });
             }
         }
 
-        /// <summary>A peça tem porta deste lado (DoorSides do RoomDef, girando 90° no sentido horário se 'rotated')?</summary>
-        private static bool SideHasDoor(RoomDef def, Vector2Int worldSide, bool rotated)
+        /// <summary>Onde fica a porta do lado 'o' do retângulo: no meio da 1ª célula do meio daquele lado.</summary>
+        public static Vector2 DoorPos(RectInt r, Vector2Int o, int cell)
+        {
+            bool alongX = o.y != 0;
+            float along = CellCenters(alongX ? r.xMin : r.yMin, alongX ? r.xMax : r.yMax, cell)[0];
+            int line = o.y > 0 ? r.yMax : o.y < 0 ? r.yMin : o.x > 0 ? r.xMax : r.xMin;
+            return alongX ? new Vector2(along, line) : new Vector2(line, along);
+        }
+
+        /// <summary>A peça, girada 'quarter' quartos de volta no sentido horário, tem porta no lado 'worldSide'?</summary>
+        public static bool SideHasDoor(RoomDef def, Vector2Int worldSide, int quarter)
         {
             DoorSides doors = def.Doors;
             if (doors == DoorSides.All) return true;
             DoorSides side = SideOf(worldSide);
-            if (rotated) side = CounterClockwise(side); // lado sem giro que, girado 90° horário, vira 'worldSide'
+            for (int i = 0; i < (quarter & 3); i++) side = CounterClockwise(side); // lado sem giro que vira 'worldSide'
             return (doors & side) != 0;
         }
 
@@ -204,7 +196,7 @@ namespace HorrorTycoon.Rooms.Generation
             foreach (var c in layout.connections)
             {
                 if (c.A != space && c.B != space) continue;
-                if (OutwardOf(r, c.Position, c.HorizontalWall) == o && OnEdge(r, c.Position, c.HorizontalWall)) return true;
+                if (OnEdge(r, c.Position, c.HorizontalWall) && OutwardOf(r, c.Position, c.HorizontalWall) == o) return true;
             }
             foreach (var site in layout.sites)
             {
@@ -251,9 +243,10 @@ namespace HorrorTycoon.Rooms.Generation
         // ================================================================== 2. Onde cabe
 
         /// <summary>
-        /// Onde a peça caberia do outro lado da porta: colada à parede do host, cobrindo o vão com as margens,
-        /// alinhada ao grid, dentro do terreno e sem passar por cima de nada. A mais centrada na porta. False = não cabe.
-        /// Giro de 90° só se a peça permite; ela precisa ter porta (DoorSides) do lado que encosta no host.
+        /// Onde a peça caberia do outro lado da porta: nas células logo depois dela, girada para ter porta (DoorSides) no lado
+        /// que encosta, com essa porta exatamente na porta de entrada, dentro do terreno e sem passar por cima de nada.
+        /// Entre os giros possíveis, fica o que deixa MAIS portas dando para células livres (a casa continua crescendo);
+        /// empate: o menor giro. False = não cabe.
         /// </summary>
         public static bool TryPlace(HouseLayout layout, HouseDoorSite site, RoomDef def, DraftRules rules, out DraftPlacement placement)
         {
@@ -264,24 +257,20 @@ namespace HorrorTycoon.Rooms.Generation
             RectInt hr = layout.spaces[site.Host].Rect;
             Vector2Int o = site.Outward;
             bool alongX = o.y != 0;
-            float door = alongX ? site.Position.x : site.Position.y;
-            float half = site.Width * 0.5f + rules.Margin;
             Vector2Int baseSize = new Vector2Int(Snap(def.Size.x, cell), Snap(def.Size.y, cell));
 
             bool found = false;
-            float bestDist = float.MaxValue;
-            for (int rot = 0; rot < 2; rot++)
+            int bestOpen = -1;
+            for (int q = 0; q < 4; q++)
             {
-                bool rotated = rot == 1;
-                if (rotated && (!def.AllowRotation || baseSize.x == baseSize.y)) continue;
-                if (!SideHasDoor(def, -o, rotated)) continue;
+                if (q > 0 && !def.AllowRotation) break;
+                if (!SideHasDoor(def, -o, q)) continue;
 
-                Vector2Int sz = rotated ? new Vector2Int(baseSize.y, baseSize.x) : baseSize;
+                Vector2Int sz = (q & 1) == 1 ? new Vector2Int(baseSize.y, baseSize.x) : baseSize;
                 int alongSize = alongX ? sz.x : sz.y;
                 int depth = alongX ? sz.y : sz.x;
-                int lo = Mathf.CeilToInt(door + half - alongSize - 0.0001f);
-                int hi = Mathf.FloorToInt(door - half + 0.0001f);
-                for (int a = lo; a <= hi; a++)
+                float door = alongX ? site.Position.x : site.Position.y;
+                for (int a = Mathf.FloorToInt(door) - alongSize + 1; a <= Mathf.FloorToInt(door); a++)
                 {
                     if (((a % cell) + cell) % cell != 0) continue; // alinhado ao grid
                     RectInt rect;
@@ -289,18 +278,34 @@ namespace HorrorTycoon.Rooms.Generation
                     else if (o.y < 0) rect = new RectInt(a, hr.yMin - depth, alongSize, depth);
                     else if (o.x > 0) rect = new RectInt(hr.xMax, a, depth, alongSize);
                     else rect = new RectInt(hr.xMin - depth, a, depth, alongSize);
+                    // A porta dela daquele lado tem que cair na porta de entrada.
+                    if ((DoorPos(rect, -o, cell) - site.Position).sqrMagnitude > 0.01f) continue;
                     if (!layout.IsFree(rect)) continue;
 
-                    float dist = Mathf.Abs(a + alongSize * 0.5f - door);
-                    if (dist < bestDist - 0.001f)
+                    int open = OpenDoors(layout, def, rect, q, -o, cell);
+                    if (open > bestOpen)
                     {
-                        bestDist = dist;
-                        placement = new DraftPlacement { Rect = rect, Rotated = rotated };
+                        bestOpen = open;
+                        placement = new DraftPlacement { Rect = rect, Quarter = q };
                         found = true;
                     }
                 }
             }
             return found;
+        }
+
+        /// <summary>Quantas portas da peça (fora a de entrada) dariam para células livres dentro do terreno.</summary>
+        private static int OpenDoors(HouseLayout layout, RoomDef def, RectInt rect, int quarter, Vector2Int entry, int cell)
+        {
+            int n = 0;
+            foreach (var o in Sides)
+            {
+                if (o == entry || !SideHasDoor(def, o, quarter)) continue;
+                var landing = LandingRect(DoorPos(rect, o, cell), o.y != 0, o, cell);
+                if (landing.xMin < 0 || landing.yMin < 0 || landing.xMax > layout.Bounds.x || landing.yMax > layout.Bounds.y) continue;
+                if (OccupantOf(layout, landing) < 0) n++;
+            }
+            return n;
         }
 
         private static DoorSides SideOf(Vector2Int d)
@@ -398,27 +403,18 @@ namespace HorrorTycoon.Rooms.Generation
             int idx = layout.spaces.Count;
             layout.spaces.Add(new HouseSpace
             {
-                Index = idx, Kind = def.Kind, Def = def, Rect = p.Rect, Rotated = p.Rotated, ParentIndex = site.Host, IsDeep = false,
+                Index = idx, Kind = def.Kind, Def = def, Rect = p.Rect, Rotated = p.Rotated, Quarter = p.Quarter, ParentIndex = site.Host, IsDeep = false,
             });
             Connect(layout, site, idx, rules.DoorCost);
 
+            // Portas para o vazio de outras peças que dão na peça nova: passagem se ela tiver porta ali (no mesmo ponto); senão, parede.
             foreach (var other in layout.sites)
             {
                 if (!other.IsOpen || !Landing(other).Overlaps(p.Rect)) continue;
-                RectInt hr = layout.spaces[other.Host].Rect;
-                bool fits = HouseLayout.TryGetSharedWall(hr, p.Rect, out Vector2Int from, out Vector2Int to);
-                if (fits)
-                {
-                    float along = other.HorizontalWall ? other.Position.x : other.Position.y;
-                    float lo = other.HorizontalWall ? from.x : from.y;
-                    float hi = other.HorizontalWall ? to.x : to.y;
-                    float line = other.HorizontalWall ? from.y : from.x;
-                    float sLine = other.HorizontalWall ? other.Position.y : other.Position.x;
-                    fits = other.HorizontalWall == (from.y == to.y) && Mathf.Abs(line - sLine) < 0.001f
-                           && along - other.Width * 0.5f >= lo - 0.001f && along + other.Width * 0.5f <= hi + 0.001f;
-                }
-                // Uma porta só entre os mesmos dois espaços (a parede em comum tem um vão só).
-                if (fits && Connected(layout, other.Host, idx)) fits = false;
+                Vector2Int back = -other.Outward;
+                bool fits = SideHasDoor(def, back, p.Quarter)
+                            && (DoorPos(p.Rect, back, rules.Cell) - other.Position).sqrMagnitude < 0.01f
+                            && !Connected(layout, other.Host, idx);
                 if (fits) Connect(layout, other, idx, rules.DoorCost);
                 else other.State = DoorSiteState.Blocked;
             }

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ebdd26f18bfd8794b8d74b499afccc8c, type: 3}
   m_Name: Casa_Padrao
   m_EditorClassIdentifier: HorrorTycoon::HorrorTycoon.Rooms.Generation.HouseGenDef
-  bounds: {x: 48, y: 40}
+  bounds: {x: 42, y: 36}
   corridorDef: {fileID: 11400000, guid: e607adb0104876e4cae27ef10dff9c44, type: 2}
   corridorWidth: 3
   corridorSegments: {x: 2, y: 4}
@@ -33,7 +33,11 @@ MonoBehaviour:
   doorCornerMargin: 0.4
   minSharedWall: 3
   growByDraft: 1
-  gridCell: 2
+  gridCell: 6
+  corridorPieces:
+  - {fileID: 11400000, guid: 1b35289f22a147eab214672468e13950, type: 2}
+  - {fileID: 11400000, guid: 6e39b07e86b44a68b6b0e274a8f78021, type: 2}
+  - {fileID: 11400000, guid: 8cb20a0c73104c36be4b321dc6431dad, type: 2}
   draftOptions: 3
   maxAttempts: 30
   startInside: 1
